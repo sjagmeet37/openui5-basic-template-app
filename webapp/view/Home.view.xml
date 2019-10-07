@@ -6,6 +6,10 @@
 	<Page
 		id="page"
 		title="{i18n>title}">
-		<content></content>
+		<content>
+			<List headerText="Directions" items="{data>/Regions}">
+				<StandardListItem title="{data>RegionDescription}"/>
+			</List>
+		</content>
 	</Page>
 </mvc:View>

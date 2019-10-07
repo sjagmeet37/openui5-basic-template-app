@@ -10,9 +10,18 @@
 		"title": "{{appTitle}}",
 		"description": "{{appDescription}}",
 		"resources": "resources.json",
-		"ach": "ach"
+		"ach": "ach",
+		"dataSources": {
+			"mainService": {
+				"uri": "http://localhost:8090/services.odata.org/V2/Northwind/Northwind.svc",
+				"type": "OData",
+				"settings": {
+					"odataVersion": "2.0",
+					"localUri": "localService/metadata.xml"
+				}
+			}
+		}
 	},
-
 	"sap.ui": {
 		"technology": "UI5",
 		"icons": {
@@ -29,7 +38,6 @@
 			"phone": true
 		}
 	},
-
 	"sap.ui5": {
 		"rootView": {
 			"viewName": "sap.ui.demo.basicTemplate.view.App",
@@ -55,37 +63,50 @@
 				"settings": {
 					"bundleName": "sap.ui.demo.basicTemplate.i18n.i18n"
 				}
+			},
+			"data": {
+				"type": "sap.ui.model.odata.v2.ODataModel",
+				"dataSource": "mainService",
+				"preload": true,
+				"settings": {
+					"useBatch": false
+				}
 			}
 		},
-		"resources": {
-			"css": [{
+	
+	"resources": {
+		"css": [
+			{
 				"uri": "css/style.css"
-			}]
+			}
+		]
+	},
+	"routing": {
+		"config": {
+			"routerClass": "sap.m.routing.Router",
+			"viewType": "XML",
+			"viewPath": "sap.ui.demo.basicTemplate.view",
+			"controlId": "app",
+			"controlAggregation": "pages",
+			"async": true
 		},
-		"routing": {
-			"config": {
-				"routerClass": "sap.m.routing.Router",
-				"viewType": "XML",
-				"viewPath": "sap.ui.demo.basicTemplate.view",
-				"controlId": "app",
-				"controlAggregation": "pages",
-				"async": true
-			},
-			"routes": [
-				{
-					"pattern": "",
-					"name": "home",
-					"target": ["home"]
-				}
-			],
-			"targets": {
-				"home": {
-					"viewName": "Home",
-					"viewId": "home",
-					"viewLevel": 1,
-					"title": "{i18n>title}"
-				}
+		"routes": [
+			{
+				"pattern": "",
+				"name": "home",
+				"target": [
+					"home"
+				]
+			}
+		],
+		"targets": {
+			"home": {
+				"viewName": "Home",
+				"viewId": "home",
+				"viewLevel": 1,
+				"title": "{i18n>title}"
 			}
 		}
 	}
+}
 }
