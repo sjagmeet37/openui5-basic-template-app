@@ -13,7 +13,7 @@
 		"ach": "ach",
 		"dataSources": {
 			"mainService": {
-				"uri": "http://localhost:8090/services.odata.org/V2/Northwind/Northwind.svc",
+				"uri": "http://localhost:8091/services.odata.org/V2/Northwind/Northwind.svc",
 				"type": "OData",
 				"settings": {
 					"odataVersion": "2.0",
@@ -71,6 +71,14 @@
 				"settings": {
 					"useBatch": false
 				}
+			},
+			"sample": {
+				"type": "sap.ui.model.json.JSONModel",
+				"uri": "/model/sample.json"
+			},
+			"helloPanel": {
+				"type": "sap.ui.model.json.JSONModel",
+				"uri": "model/HelloPanel.json"
 			}
 		},
 	

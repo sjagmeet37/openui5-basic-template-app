@@ -1,15 +1,57 @@
-<mvc:View
-	controllerName="sap.ui.demo.basicTemplate.controller.Home"
-	displayBlock="true"
-	xmlns="sap.m"
-	xmlns:mvc="sap.ui.core.mvc">
-	<Page
-		id="page"
-		title="{i18n>title}">
-		<content>
-			<List headerText="Directions" items="{data>/Regions}">
-				<StandardListItem title="{data>RegionDescription}"/>
-			</List>
-		</content>
-	</Page>
+<mvc:View controllerName="sap.ui.demo.basicTemplate.controller.Home" displayBlock="true" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
+	<App>
+		<pages>
+			<Page id="page" title="{i18n>title}">
+				<content>
+					<IconTabBar id="idTopLevelIconTabBar">
+						<items>
+							<IconTabFilter id="start" text="{i18n>gettingStartedFilter}">
+								<Carousel>
+									<List headerText="Directions" items="{data>/Regions}">
+										<StandardListItem title="{data>RegionDescription}" />
+									</List>
+									<Image src="https://cdn3.volusion.com/bstu5.rxjt6/v/vspfiles/photos/WP11001-2.jpg?v-cache=1529080068" height="50%" />
+								</Carousel>
+								<HBox>
+									<Button text="Accept" type="Accept" press="onButtonPress" />
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" />
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" />
+									<Input value="{sample>/glossary/title}" valueLiveUpdate="true" description="Hello {sample>/glossary/title}" />
+								</HBox>
+							</IconTabFilter>
+
+							<IconTabFilter id="tab1" text="{i18n>gettingStartedFilter}">
+								<Carousel>
+									<List headerText="Directions" items="{data>/Regions}">
+										<StandardListItem title="{data>RegionDescription}" />
+									</List>
+									<Image src="https://cdn3.volusion.com/bstu5.rxjt6/v/vspfiles/photos/WP11001-2.jpg?v-cache=1529080068" height="50%" />
+								</Carousel>
+								<HBox>
+									<Button text="Accept" type="Accept" press="onButtonPress" />
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" />
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" />
+									<Input value="{sample>/glossary/title}" valueLiveUpdate="true" description="Hello {sample>/glossary/title}" />
+								</HBox>
+							</IconTabFilter>
+							<IconTabFilter id="tab2" text="{i18n>gettingStartedFilter}" icon="sap-icon://activities">
+								<Carousel height="10%" width="100%" loop="true">
+									<List headerText="Directions" items="{data>/Regions}">
+										<StandardListItem title="{data>RegionDescription}" />
+									</List>
+									<Image src="https://cdn3.volusion.com/bstu5.rxjt6/v/vspfiles/photos/WP11001-2.jpg?v-cache=1529080068" height="20%" width="20%" />
+								</Carousel>
+								<HBox>
+									<Button text="Accept" type="Accept" press="onButtonPress" class="sapUiSmallMargin"/>
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" class="sapUiSmallMargin"/>
+									<Input value="{helloPanel>/recipient/name}" description="Hello {helloPanel>/recipient/name}" valueLiveUpdate="true" width="60%" class="sapUiSmallMargin"/>
+									<Input value="{sample>/glossary/title}" valueLiveUpdate="true" description="Hello {sample>/glossary/title}" class="sapUiSmallMargin"/>
+								</HBox>
+							</IconTabFilter>
+						</items>
+					</IconTabBar>
+				</content>
+			</Page>
+		</pages>
+	</App>
 </mvc:View>
