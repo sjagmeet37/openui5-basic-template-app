@@ -12,8 +12,8 @@
 		"resources": "resources.json",
 		"ach": "ach",
 		"dataSources": {
-			"mainService": {
-				"uri": "http://localhost:8091/services.odata.org/V2/Northwind/Northwind.svc",
+			"northWindOdata": {
+				"uri": "http://localhost:8091/services.odata.org/V2/Northwind/Northwind.svc/",
 				"type": "OData",
 				"settings": {
 					"odataVersion": "2.0",
@@ -64,9 +64,9 @@
 					"bundleName": "sap.ui.demo.basicTemplate.i18n.i18n"
 				}
 			},
-			"data": {
+			"northWind": {
 				"type": "sap.ui.model.odata.v2.ODataModel",
-				"dataSource": "mainService",
+				"dataSource": "northWindOdata",
 				"preload": true,
 				"settings": {
 					"useBatch": false
@@ -79,6 +79,10 @@
 			"helloPanel": {
 				"type": "sap.ui.model.json.JSONModel",
 				"uri": "model/HelloPanel.json"
+			},
+			"personalInfo":{
+				"type": "sap.ui.model.json.JSONModel",
+				"uri":"/model/PersonalInfo.json"
 			}
 		},
 	

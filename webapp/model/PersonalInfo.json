@@ -1,0 +1,17 @@
+{
+    "personal":{
+        "firstName" : "test",
+        "lastName" : "test",
+        "fatherName" : "test",
+        "motherName" : "test"
+    },
+    "address":{
+        "street": "test",
+        "houseNumber":"test",
+        "zipCode":"test",
+        "city":"test",
+        "country":"India"
+
+    }
+
+}

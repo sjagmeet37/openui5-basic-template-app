@@ -1,8 +1,119 @@
-<mvc:View
-	displayBlock="true"
-	xmlns="sap.m"
-	xmlns:mvc="sap.ui.core.mvc">
-	<Shell>
-		<App id="app"/>
-	</Shell>
+<mvc:View displayBlock="true" controllerName="sap.ui.demo.basicTemplate.controller.App" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc" xmlns:core="sap.ui.core" xmlns:l="sap.ui.layout" xmlns:f="sap.ui.layout.form">
+	<App>
+		<pages>
+			<Page title="Mountains Trip SignUp">
+				<content>
+					<Carousel loop="true" width="100%" height="50%">
+						<pages>
+							<Image src="http://avante.biz/wp-content/uploads/Ultra-Widescreen-Wallpapers/Ultra-Widescreen-Wallpapers-002.jpg" width="100%" />
+							<Image src="https://free4kwallpapers.com/uploads/originals/2018/11/11/2560x1080-ultra-wide-tfw-99-woodcutting-wallpaper.jpg" width="100%" />
+							<Image src="https://stmed.net/sites/default/files/mount-hood-wallpapers-27971-4099932.jpg" width="100%" />
+						</pages>
+					</Carousel>
+					<IconTabBar id="mountainsTabBar" enableTabReordering="true" selectedKey="db">
+						<items>
+							<IconTabFilter text="Info" icon="sap-icon://activities">
+								<Panel expandable="true" expanded="true" headerText="About The Mountains">
+									<content>
+										<Text text="Lorem ipsum dolor st amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat" />
+									</content>
+								</Panel>
+								<Panel expandable="true" expanded="true" headerText="Upcoming Events">
+									<content>
+										<Text text="Lorem ipsum dolor st amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat" />
+									</content>
+								</Panel>
+
+							</IconTabFilter>
+							<IconTabFilter text="Sign Up" icon="sap-icon://activities">
+								<MessageStrip text="your Information will be stored for further refrenced" type="Information" showIcon="true" class="sapUiMediumMarginBottom" />
+
+								<Panel expandable="true" expanded="false" headerText="Personal Information">
+									<content>
+										<VBox>
+											<f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
+												<label text="First Name" />
+												<Input id="firstName" value="{personalInfo>/personal/firstName}" valueLiveUpdate="true" />
+												<label text="Last Name" />
+												<Input id="lastName" value="{personalInfo>/personal/lastName}" valueLiveUpdate="true" />
+												<label text="Father Name" />
+												<Input id="fatherName" value="{personalInfo>/personal/fatherName}" valueLiveUpdate="true" />
+												<label text="Mother Name" />
+												<Input id="motherName" value="{personalInfo>/personal/motherName}" valueLiveUpdate="true" />
+											</f:SimpleForm>
+										</VBox>
+									</content>
+								</Panel>
+								<Panel expandable="true" expanded="false" headerText="Address">
+									<content>
+										<VBox>
+											<f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
+												<f:content>
+													<Label text="Street/No." />
+													<Input id="streetNumber" value="{personalInfo>/address/street}" valueLiveUpdate="true"></Input>
+													<Input id="houseNumber" value="{personalInfo>/address/houseNumber}" valueLiveUpdate="true">
+														<layoutData>
+															<l:GridData span="XL1 L2 M2 S4" />
+														</layoutData>
+													</Input>
+													<Label text="ZIP Code/City" />
+													<Input id="zipCode" value="{personalInfo>/address/zipCode}" valueLiveUpdate="true">
+														<layoutData>
+															<l:GridData span="XL1 L2 M2 S4" />
+														</layoutData>
+													</Input>
+													<Input id="city" value="{personalInfo>/address/city}" valueLiveUpdate="true" />
+													<Label text="Country" />
+													<Select id="selectCountry" selectedKey="{personalInfo>/address/country}">
+														<items>
+															<core:Item text="India" key="india" />
+															<core:Item text="UK" key="uk" />
+															<core:Item text="US" key="us" />
+														</items>
+													</Select>
+												</f:content>
+											</f:SimpleForm>
+										</VBox>
+									</content>
+								</Panel>
+								<VBox>
+									<OverflowToolbar id="otb1">
+										<ToolbarSpacer />
+										<Button text="Sign Up" type="Accept" press="acceptAndSignUp" />
+										<Button text="Next Page" type="default" press="navigateToHome" />
+									</OverflowToolbar>
+								</VBox>
+							</IconTabFilter>
+							<IconTabFilter text="Products" key="db" icon="sap-icon://activities">
+								<content>
+									<List headerText="Products" items="{
+										path : 'northWind>/Products',
+										sorter : {
+											path : 'northWind>CategoryID',
+											group : true
+											}
+										}">
+										<items>
+											<ObjectListItem press="onListItemPress" type="Navigation" title="{northWind>ProductName}" number="{northWind>UnitPrice}" numberState="{=${northWind>UnitPrice} > 10 ? 'Error' : 'Success'}" intro="{northWind>ProductID}" growing="false" growingThreshold="5" growingScrollToLoad="false">
+
+												<firstStatus>
+													<ObjectStatus text="{
+															parts: [
+																{path: 'northWind>Discontinued'}
+															],
+															formatter : '.formatter.isManufactured'
+														}" />
+												</firstStatus>
+
+											</ObjectListItem>
+										</items>
+									</List>
+								</content>
+							</IconTabFilter>
+						</items>
+					</IconTabBar>
+				</content>
+			</Page>
+		</pages>
+	</App>
 </mvc:View>

@@ -13,8 +13,8 @@ sap.ui.define([
 
 		},
 		onButtonPress : function(oEvent){
-			var title = this.getView().getModel("sample").getProperty("/glossary/title");
-			MessageToast.show("Hello!" + title);
+			var model = this.getView().getModel("personalInfo").getProperty("/personal/firstName");
+			MessageToast.show(model);
 		}
 
 	});
