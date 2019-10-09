@@ -28,54 +28,7 @@
 							<IconTabFilter text="Sign Up" icon="sap-icon://activities">
 								<MessageStrip text="your Information will be stored for further refrenced" type="Information" showIcon="true" class="sapUiMediumMarginBottom" />
 
-								<Panel expandable="true" expanded="false" headerText="Personal Information">
-									<content>
-										<VBox>
-											<f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
-												<label text="First Name" />
-												<Input id="firstName" value="{personalInfo>/personal/firstName}" valueLiveUpdate="true" />
-												<label text="Last Name" />
-												<Input id="lastName" value="{personalInfo>/personal/lastName}" valueLiveUpdate="true" />
-												<label text="Father Name" />
-												<Input id="fatherName" value="{personalInfo>/personal/fatherName}" valueLiveUpdate="true" />
-												<label text="Mother Name" />
-												<Input id="motherName" value="{personalInfo>/personal/motherName}" valueLiveUpdate="true" />
-											</f:SimpleForm>
-										</VBox>
-									</content>
-								</Panel>
-								<Panel expandable="true" expanded="false" headerText="Address">
-									<content>
-										<VBox>
-											<f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
-												<f:content>
-													<Label text="Street/No." />
-													<Input id="streetNumber" value="{personalInfo>/address/street}" valueLiveUpdate="true"></Input>
-													<Input id="houseNumber" value="{personalInfo>/address/houseNumber}" valueLiveUpdate="true">
-														<layoutData>
-															<l:GridData span="XL1 L2 M2 S4" />
-														</layoutData>
-													</Input>
-													<Label text="ZIP Code/City" />
-													<Input id="zipCode" value="{personalInfo>/address/zipCode}" valueLiveUpdate="true">
-														<layoutData>
-															<l:GridData span="XL1 L2 M2 S4" />
-														</layoutData>
-													</Input>
-													<Input id="city" value="{personalInfo>/address/city}" valueLiveUpdate="true" />
-													<Label text="Country" />
-													<Select id="selectCountry" selectedKey="{personalInfo>/address/country}">
-														<items>
-															<core:Item text="India" key="india" />
-															<core:Item text="UK" key="uk" />
-															<core:Item text="US" key="us" />
-														</items>
-													</Select>
-												</f:content>
-											</f:SimpleForm>
-										</VBox>
-									</content>
-								</Panel>
+								<core:Fragment fragmentName="sap.ui.demo.basicTemplate.view.SupplierInfo" type="XML"/>
 								<VBox>
 									<OverflowToolbar id="otb1">
 										<ToolbarSpacer />
