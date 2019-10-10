@@ -1,6 +1,5 @@
 <mvc:View controllerName="sap.ui.demo.basicTemplate.controller.Home" displayBlock="true" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
-	<App>
-		<pages>
+	
 			<Page id="page" title="{i18n>title}">
 				<content>
 					<IconTabBar id="idTopLevelIconTabBar">
@@ -52,6 +51,5 @@
 					</IconTabBar>
 				</content>
 			</Page>
-		</pages>
-	</App>
+		
 </mvc:View>

@@ -5,7 +5,7 @@ sap.ui.define([
 ], function(Controller, formatter, MessageToast) {
 	"use strict";
 
-	return Controller.extend("sap.ui.demo.basicTemplate.controller.App", {
+	return Controller.extend("sap.ui.demo.basicTemplate.controller.Landing", {
 
 		formatter: formatter,
 
@@ -88,7 +88,7 @@ sap.ui.define([
 			}
 		},
 		navigateToHome : function(){
-
+			this.getOwnerComponent().getRouter().navTo("home");
 		}
 	});
 });

@@ -10,11 +10,11 @@ sap.ui.define([
 		formatter: formatter,
 
 		onInit: function () {
-
+			
 		},
 		onButtonPress : function(oEvent){
-			var model = this.getView().getModel("personalInfo").getProperty("/personal/firstName");
-			MessageToast.show(model);
+			//var model = this.getView().getModel("personalInfo").getProperty("/personal/firstName");
+			//MessageToast.show(model);
 		}
 
 	});
