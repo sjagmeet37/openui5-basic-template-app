@@ -12,6 +12,23 @@ sap.ui.define([
 		onInit: function () {
 
 		},
+		showDialog :function(oEvent){
+			
+			if (this._oDialog){
+				this._oDialog.destroy();
+				this._oDialog = null;
+			}
+
+			if (!this._oDialog){
+				this._oDialog = sap.ui.xmlfragment("sap.ui.demo.basicTemplate.view.Dialog", this);
+			}
+
+			//this._oDialog.setModel(this.getView().getModel());
+
+			//jQuery.sap.syncStyleClass("", this.getView(), this._oDialog);
+			this._oDialog.open();
+
+		},
 		acceptAndSignUp : function(oEvent){
 			var firstName = this.getView().byId("firstName");
 			var lastName = this.getView().byId("lastName");

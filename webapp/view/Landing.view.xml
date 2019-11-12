@@ -30,6 +30,7 @@
 						<VBox>
 							<OverflowToolbar id="otb1">
 								<ToolbarSpacer />
+								<Button text="Dialog" type="Accept" press="showDialog" />
 								<Button text="Sign Up" type="Accept" press="acceptAndSignUp" />
 								<Button text="Next Page" type="default" press="navigateToHome" />
 							</OverflowToolbar>

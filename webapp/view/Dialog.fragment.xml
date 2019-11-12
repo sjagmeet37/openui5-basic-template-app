@@ -1,0 +1,35 @@
+<core:FragmentDefinition
+		xmlns="sap.m"
+		xmlns:core="sap.ui.core">
+	<ViewSettingsDialog
+			confirm="handleConfirm">
+		<customTabs>
+			<ViewSettingsCustomTab id="app-settings" icon="sap-icon://action-settings" title="Settings" tooltip="Application Settings">
+				<content>
+					<Panel height="386px">
+						<content>
+						<Label text="Value Lable" design="Bold" id="VSDThemeLabel"/>
+						<SegmentedButton
+								class="chartSetting"
+								selectedButton="valueLabelOn"
+								id="valueLabelButton"
+								width="100%" >
+							<Button text="On" id="valueLabelOn" />
+							<Button text="Off" id="valueLabelOff" />
+						</SegmentedButton>
+						<Label text="Sum Value Lable" design="Bold" />
+						<SegmentedButton
+								class="chartSetting"
+								selectedButton="SumValueLableOn"
+								id="SumValueLableButton"
+								width="100%" >
+							<Button text="On" id="SumValueLableOn" />
+							<Button text="Off" id="SumValueLableOn" />
+						</SegmentedButton>
+						</content>
+					</Panel>
+				</content>
+			</ViewSettingsCustomTab>
+		</customTabs>
+	</ViewSettingsDialog>
+</core:FragmentDefinition>
