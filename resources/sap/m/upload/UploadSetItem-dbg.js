@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -36,10 +36,10 @@ sap.ui.define([
 	 * @class Item that represents one file to be uploaded using the {@link sap.m.upload.UploadSet} control.
 	 * @extends sap.ui.core.Element
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @constructor
 	 * @public
-	 * @since 1.62
+	 * @since 1.63
 	 * @alias sap.m.upload.UploadSetItem
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel.
 	 */
@@ -84,7 +84,12 @@ sap.ui.define([
 				/**
 				 * Shows or hides the edit button.
 				 */
-				visibleEdit: {type: "boolean", defaultValue: true}
+				visibleEdit: {type: "boolean", defaultValue: true},
+				/**
+				 * URL where the uploaded files will be stored. If empty, uploadUrl from the uploader is considered.
+				 * @since 1.90
+				 */
+				uploadUrl: {type: "string", defaultValue: null}
 			},
 			defaultAggregation: "attributes",
 			aggregations: {
@@ -111,7 +116,12 @@ sap.ui.define([
 					type: "sap.m.ObjectStatus",
 					multiple: true,
 					singularName: "status"
-				}
+				},
+				/**
+				 * Header fields to be included in the header section of an XMLHttpRequest (XHR) request
+				 * @since 1.90
+				 */
+				headerFields: {type: "sap.ui.core.Item", multiple: true, singularName: "headerField"}
 			},
 			events: {
 				/**
@@ -144,27 +154,30 @@ sap.ui.define([
 
 	var DynamicItemContent = HTML.extend("sap.m.upload.DynamicItemContent", {
 		metadata: {
+			library: "sap.m",
 			properties: {
 				item: {type: "sap.m.upload.UploadSetItem"}
 			}
 		},
 		renderer: {
+			apiVersion: 2,
 			render: function (oRm, oControl) {
 				var oItem = oControl.getItem();
-				oRm.write("<div class=\"sapMUCTextContainer ");
+				oRm.openStart("div");
+				oRm.class("sapMUCTextContainer");
 				if (this._bInEditMode) {
-					oRm.write("sapMUCEditMode ");
+					oRm.class("sapMUCEditMode");
 				}
-				oRm.write("\" >");
+				oRm.openEnd();
 
-				oRm.write("<div style=\"display:flex;\">");
+				oRm.openStart("div").class("sapMUSTextInnerContainer").openEnd();
 				oRm.renderControl(oItem._bInEditMode ? oItem._getFileNameEdit() : oItem._getFileNameLink());
 				oItem._renderMarkers(oRm);
-				oRm.write("</div>");
+				oRm.close("div");
 
 				oItem._renderAttributes(oRm);
 				oItem._renderStatuses(oRm);
-				oRm.write("</div>");
+				oRm.close("div");
 				oItem._renderStateAndProgress(oRm);
 				oItem._renderButtons(oRm);
 			}
@@ -175,7 +188,6 @@ sap.ui.define([
 	/* Constants */
 	/* ========= */
 
-	UploadSetItem.DYNAMIC_CONTENT_SEPARATOR = "<div class=\"sapMUCSeparator\">&nbsp&#x00B7&#160</div>";
 	UploadSetItem.MEGABYTE = 1048576;
 	UploadSetItem.IMAGE_FILE_ICON = "sap-icon://card";
 
@@ -273,8 +285,12 @@ sap.ui.define([
 
 		if (this.getParent()) {
 			this._getRestartButton().setVisible(sUploadState === UploadState.Error);
-			this._getEditButton().setVisible(!bUploading);
-			this._getDeleteButton().setVisible(!bUploading);
+			if (this.getVisibleEdit()) {
+				this._getEditButton().setVisible(!bUploading);
+			}
+			if (this.getVisibleRemove()) {
+				this._getDeleteButton().setVisible(!bUploading);
+			}
 			this._getTerminateButton().setVisible(this.getParent().getTerminationEnabled() && bUploading);
 		}
 
@@ -284,7 +300,9 @@ sap.ui.define([
 	UploadSetItem.prototype.setEnabledRemove = function (bEnable) {
 		if (this.getEnabledRemove() !== bEnable) {
 			this.setProperty("enabledRemove", bEnable, true);
-			this._getDeleteButton().setEnabled(bEnable);
+			if (this.getParent()) {
+				this._getDeleteButton().setEnabled(bEnable);
+			}
 		}
 		return this;
 	};
@@ -292,7 +310,9 @@ sap.ui.define([
 	UploadSetItem.prototype.setVisibleRemove = function (bVisible) {
 		if (this.getVisibleRemove() !== bVisible) {
 			this.setProperty("visibleRemove", bVisible, true);
-			this._getDeleteButton().setVisible(bVisible);
+			if (this.getParent()) {
+				this._getDeleteButton().setVisible(bVisible);
+			}
 		}
 		return this;
 	};
@@ -300,7 +320,9 @@ sap.ui.define([
 	UploadSetItem.prototype.setEnabledEdit = function (bEnable) {
 		if (this.getEnabledEdit() !== bEnable) {
 			this.setProperty("enabledEdit", bEnable, true);
-			this._getEditButton().setEnabled(bEnable);
+			if (this.getParent()) {
+				this._getEditButton().setEnabled(bEnable);
+			}
 		}
 		return this;
 	};
@@ -308,7 +330,36 @@ sap.ui.define([
 	UploadSetItem.prototype.setVisibleEdit = function (bVisible) {
 		if (this.getVisibleEdit() !== bVisible) {
 			this.setProperty("visibleEdit", bVisible, true);
-			this._getEditButton().setVisible(bVisible);
+			if (this.getParent()) {
+				this._getEditButton().setVisible(bVisible);
+			}
+		}
+		return this;
+	};
+
+	UploadSetItem.prototype.setThumbnailUrl = function(sUrl) {
+		if (this.getThumbnailUrl() != sUrl) {
+			this.setProperty("thumbnailUrl", sUrl, true);
+			// Below we handle change of icon case for existing uploadSetItem.For creation of uploadSetItem icon is created using _getIcon method.
+			if (this._oListItem) {
+				for (var i = 0; i < this._oListItem.getContent().length; i++) {
+					if (this._oListItem.getContent()[i] instanceof sap.ui.core.Icon || this._oListItem.getContent()[i] instanceof sap.m.Image) {
+						var oItem = this._oListItem.getContent()[i];
+						this._oListItem.removeContent(oItem);
+						if (this._oIcon) {
+							this._oIcon.destroy();
+							this._oIcon = null;
+						}
+						this._oIcon = IconPool.createControlByURI({
+							id: this.getId() + "-thumbnail",
+							src: sUrl,
+							decorative: false
+						}, Image);
+						this._oIcon.addStyleClass("sapMUCItemImage sapMUCItemIcon");
+						this._oListItem.insertContent(this._oIcon, 0);
+					}
+				}
+			}
 		}
 		return this;
 	};
@@ -317,14 +368,36 @@ sap.ui.define([
 	/* Public methods */
 	/* ============== */
 
+	/**
+	 * Returns file object.
+	 *
+	 * @public
+	 * @returns {File|Blob} File object.
+	 *
+	 */
 	UploadSetItem.prototype.getFileObject = function () {
 		return this._oFileObject;
 	};
 
+	/**
+	 * Returns list item.
+	 *
+	 * @public
+	 * @returns {sap.m.CustomListItem} List item.
+	 *
+	 */
 	UploadSetItem.prototype.getListItem = function () {
 		return this._getListItem();
 	};
 
+	/**
+	 * Set current progress.
+	 * @param {int} iProgress Current progress.
+	 *
+	 * @public
+	 * @returns {this} Returns instance for chaining.
+	 *
+	 */
 	UploadSetItem.prototype.setProgress = function (iProgress) {
 		var $busyIndicator;
 
@@ -412,7 +485,7 @@ sap.ui.define([
 				this._oIcon.addStyleClass("sapMUCItemImage sapMUCItemIcon");
 			} else {
 				this._oIcon = new Icon(this.getId() + "-icon", {
-					src: this._getIconByFileType()
+					src: this._getIconByMimeType(this.getMediaType())
 				});
 				this._oIcon.addStyleClass("sapMUCItemIcon");
 			}
@@ -420,6 +493,20 @@ sap.ui.define([
 		}
 
 		return this._oIcon;
+	};
+
+	UploadSetItem.prototype._getIconByMimeType = function(sMimeType) {
+
+		var mimeTypeForImages = ["image/png", "image/tiff", "image/bmp", "image/jpeg", "image/gif"];
+
+		if (sMimeType) {
+			if (mimeTypeForImages.indexOf(sMimeType) === -1) {
+				return IconPool.getIconForMimeType(sMimeType);
+			}
+			return this._getIconByFileType();
+		} else {
+			return this._getIconByFileType();
+		}
 	};
 
 	UploadSetItem.prototype._getIconByFileType = function () {
@@ -458,13 +545,14 @@ sap.ui.define([
 		if (!this._oFileNameLink) {
 			this._oFileNameLink = new Link({
 				id: this.getId() + "-fileNameLink",
-				text: this.getFileName(),
 				press: [this, this._handleFileNamePressed, this]
 			});
+			this._oFileNameLink.setText(this.getFileName());//For handling curly braces in file name we have to use setter.Otherwise it will be treated as binding.
 			this._oFileNameLink.addStyleClass("sapMUCFileName");
 			this._oFileNameLink.addStyleClass("sapMUSFileName");
 			this.addDependent(this._oFileNameLink);
 		}
+		this._oFileNameLink.setEnabled(!!this.getUrl());
 
 		return this._oFileNameLink;
 	};
@@ -500,7 +588,7 @@ sap.ui.define([
 		if (!this._oEditButton) {
 			this._oEditButton = new Button({
 				id: this.getId() + "-editButton",
-				icon: "sap-icon://request",
+				icon: "sap-icon://edit",
 				type: MobileLibrary.ButtonType.Standard,
 				enabled: this.getEnabledEdit(),
 				visible: this.getVisibleEdit(),
@@ -580,7 +668,12 @@ sap.ui.define([
 		var oResult = {};
 		var oRegex = /(?:\.([^.]+))?$/;
 		var aFileExtension = oRegex.exec(sFileName);
-		oResult.name = sFileName.slice(0, sFileName.indexOf(aFileExtension[0]));
+		if (!aFileExtension[0]) {
+			aFileExtension[0] = "";
+			oResult.name = sFileName;
+		} else {
+			oResult.name = sFileName ? sFileName.slice(0, sFileName.indexOf(aFileExtension[0])) : "";
+		}
 		if (bWithDot) {
 			oResult.extension = aFileExtension[0];
 		} else {
@@ -594,7 +687,7 @@ sap.ui.define([
 		if (!this._oDeleteButton) {
 			this._oDeleteButton = new Button({
 				id: this.getId() + "-deleteButton",
-				icon: "sap-icon://sys-cancel",
+				icon: "sap-icon://decline",
 				type: MobileLibrary.ButtonType.Standard,
 				enabled: this.getEnabledRemove(),
 				visible: this.getVisibleRemove(),
@@ -725,24 +818,25 @@ sap.ui.define([
 		var iLastAttribure = this.getAttributes().length - 1;
 
 		if (this.getAttributes().length > 0) {
-			oRm.write("<div class=\"sapMUCAttrContainer\">");
+			oRm.openStart("div").class("sapMUCAttrContainer").openEnd();
 			this.getAttributes().forEach(function (oAttribute, iIndex) {
 				oRm.renderControl(oAttribute.addStyleClass("sapMUCAttr"));
-				if (iIndex < iLastAttribure) {
-					oRm.write(UploadSetItem.DYNAMIC_CONTENT_SEPARATOR);
+				if (iIndex < iLastAttribure && oAttribute.getVisible()) {
+					oRm.openStart("div").class("sapMUCSeparator").openEnd();
+					oRm.text("\u00a0\u00B7\u00a0").close("div");
 				}
 			});
-			oRm.write("</div>");
+			oRm.close("div");
 		}
 	};
 
 	UploadSetItem.prototype._renderMarkers = function (oRm) {
 		if (this.getMarkers().length > 0) {
-			oRm.write("<div class=\"sapMUSObjectMarkerContainer\">");
+			oRm.openStart("div").class("sapMUSObjectMarkerContainer").openEnd();
 			this.getMarkers().forEach(function (oMarker) {
 				oRm.renderControl(oMarker.addStyleClass("sapMUCObjectMarker"));
 			});
-			oRm.write("</div>");
+			oRm.close("div");
 		}
 	};
 
@@ -750,14 +844,15 @@ sap.ui.define([
 		var iLastStatus = this.getStatuses().length - 1;
 
 		if (this.getStatuses().length > 0) {
-			oRm.write("<div class=\"sapMUCStatusContainer\">");
+			oRm.openStart("div").class("sapMUCStatusContainer").openEnd();
 			this.getStatuses().forEach(function (oStatus, iIndex) {
 				oRm.renderControl(oStatus);
 				if (iIndex < iLastStatus) {
-					oRm.write(UploadSetItem.DYNAMIC_CONTENT_SEPARATOR);
+					oRm.openStart("div").class("sapMUCSeparator").openEnd();
+					oRm.text("\u00a0\u00B7\u00a0").close("div");
 				}
 			});
-			oRm.write("</div>");
+			oRm.close("div");
 		}
 	};
 
@@ -784,14 +879,14 @@ sap.ui.define([
 
 		// Render div container only if there is at least one button
 		if (aButtonsToRender.length > 0) {
-			oRm.write("<div class=\"sapMUCButtonContainer\">");
+			oRm.openStart("div").class("sapMUCButtonContainer").openEnd();
 			aButtonsToRender.forEach(function (oBtn, iIndex) {
 				if (iIndex < (aButtonsToRender.length - 1)) {
 					oBtn.addStyleClass("sapMUCFirstButton");
 				}
 				oRm.renderControl(oBtn);
 			});
-			oRm.write("</div>");
+			oRm.close("div");
 		}
 	};
 
@@ -864,6 +959,21 @@ sap.ui.define([
 
 	UploadSetItem.prototype._isRestricted = function () {
 		return this._bFileTypeRestricted || this._bNameLengthRestricted || this._bSizeRestricted || this._bMediaTypeRestricted;
+	};
+
+	UploadSetItem.prototype.exit = function() {
+		if (this._oProgressIndicator) {
+			this._oProgressIndicator.destroy();
+			this._oProgressIndicator = null;
+		}
+		if (this._oStateLabel) {
+			this._oStateLabel.destroy();
+			this._oStateLabel = null;
+		}
+		if (this._oProgressBox) {
+			this._oProgressBox.destroy();
+			this._oProgressBox = null;
+		}
 	};
 
 	return UploadSetItem;

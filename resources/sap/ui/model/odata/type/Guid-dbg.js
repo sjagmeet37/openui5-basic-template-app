@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -62,7 +62,7 @@ sap.ui.define([
 	 * @extends sap.ui.model.odata.type.ODataType
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @alias sap.ui.model.odata.type.Guid
 	 * @param {object} [oFormatOptions]
@@ -105,12 +105,12 @@ sap.ui.define([
 			return null;
 		}
 		switch (this.getPrimitiveType(sTargetType)) {
-		case "any":
-		case "string":
-			return sValue;
-		default:
-			throw new FormatException("Don't know how to format " + this.getName() + " to "
-				+ sTargetType);
+			case "any":
+			case "string":
+				return sValue;
+			default:
+				throw new FormatException("Don't know how to format " + this.getName() + " to "
+					+ sTargetType);
 		}
 	};
 
@@ -155,9 +155,8 @@ sap.ui.define([
 			// don't try to add separators to invalid value
 			return sValue;
 		}
-		sResult = sResult.slice(0, 8) + '-' + sResult.slice(8, 12) + '-' + sResult.slice(12, 16)
+		return sResult.slice(0, 8) + '-' + sResult.slice(8, 12) + '-' + sResult.slice(12, 16)
 			+ '-' + sResult.slice(16, 20) + '-' + sResult.slice(20);
-		return sResult.toUpperCase();
 	};
 
 	/**
@@ -166,7 +165,6 @@ sap.ui.define([
 	 *
 	 * @param {string} sValue
 	 *   the value to be validated
-	 * @returns {void}
 	 * @throws {sap.ui.model.ValidateException}
 	 *   if the value is not valid
 	 * @public

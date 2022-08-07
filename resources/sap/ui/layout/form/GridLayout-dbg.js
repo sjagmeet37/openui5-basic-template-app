@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -28,17 +28,21 @@ sap.ui.define(['sap/ui/layout/library', './FormLayout', './GridLayoutRenderer'],
 	 * @extends sap.ui.layout.form.FormLayout
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
 	 * @since 1.16.0
+	 * @deprecated Since version 1.67.0.
+	 * as <code>sap.ui.commons</code> library is deprecated and the <code>GridLayout</code> must not be used in responsive applications.
+	 * Please use <code>ResponsiveGridLayout</code> or <code>ColumnLayout</code> instead.
 	 * @alias sap.ui.layout.form.GridLayout
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	var GridLayout = FormLayout.extend("sap.ui.layout.form.GridLayout", /** @lends sap.ui.layout.form.GridLayout.prototype */ { metadata : {
 
 		library : "sap.ui.layout",
+		deprecated: true,
 		properties : {
 
 			/**
@@ -109,7 +113,7 @@ sap.ui.define(['sap/ui/layout/library', './FormLayout', './GridLayoutRenderer'],
 			return null;
 		}
 
-		var aFields = oElement.getFields();
+		var aFields = oElement.getFieldsForRendering();
 		var oNewDomRef;
 
 		var iIndex = aFields.length;
@@ -223,7 +227,7 @@ sap.ui.define(['sap/ui/layout/library', './FormLayout', './GridLayoutRenderer'],
 			var oContainerData = this.getLayoutDataForElement(oContainer, "sap.ui.layout.form.GridContainerData");
 
 			if ((bSingleColumn || !oContainerData || !oContainerData.getHalfGrid()) && !this.getRenderer().checkFullSizeElement(this, oElement) ) {
-				return (oElement.getId() ? window.document.getElementById(oElement.getId()) : null);
+				return oElement.getDomRef();
 			}
 		}
 

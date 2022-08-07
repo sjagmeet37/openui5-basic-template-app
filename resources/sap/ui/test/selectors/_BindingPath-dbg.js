@@ -1,16 +1,14 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 sap.ui.define([
     "sap/ui/test/selectors/_Selector",
-    "sap/ui/thirdparty/jquery",
     "sap/ui/model/resource/ResourceModel",
-    "sap/m/ListBase",
-    "sap/m/ListItemBase"
-], function (_Selector, $, ResourceModel, ListBase, ListItemBase) {
+    "sap/ui/model/StaticBinding"
+], function (_Selector, ResourceModel, StaticBinding) {
 	"use strict";
 
     /**
@@ -44,33 +42,42 @@ sap.ui.define([
 
             if (vBinding) {
                 return vBinding.map(function (mBinding) {
-                    // models for i18n data are ResourceModels
-                    // i18n is more restricting than bindingPath: the property name is also considered
+                    var mResult = {};
+
                     if (mBinding.model.type === ResourceModel.getMetadata().getName()) {
+                        // models for i18n data are ResourceModels
+                        // i18n is more restricting than bindingPath: the property name is also considered
                         this._oLogger.debug("Control " + oControl + " property " + sProperty +
                             " has i18n binding for model " + mBinding.model.name + " with key " + mBinding.path);
-
-                        return {
+                        // TODO: get model parameters: mBinding.model.parameters
+                        mResult = {
                             i18NText: {
                                 propertyName: sProperty,
-                                key: mBinding.path,
-                                // TODO: get parameters: mBinding.model.parameters
-                                modelName: mBinding.model.name
+                                key: mBinding.path
                             }
                         };
+                        if (mBinding.model.name && mBinding.model.name !== "i18n") {
+                            mResult.i18NText.modelName = mBinding.model.name;
+                        }
                     } else {
                         this._oLogger.debug("Control " + oControl + " property " + sProperty +
                             " has data binding for model " + mBinding.model.name + " with context " + mBinding.contextPath +
                             " and path " + mBinding.path);
-
-                        return {
-                            bindingPath: {
-                                path: mBinding.contextPath,
-                                propertyPath: mBinding.path,
-                                modelName: mBinding.model.name
-                            }
+                        mResult = {
+                            bindingPath: {}
                         };
+                        if (mBinding.value) {
+                            mResult.bindingPath.value = mBinding.value;
+                        } else {
+                            mResult.bindingPath.path = mBinding.contextPath;
+                            mResult.bindingPath.propertyPath = mBinding.path;
+                        }
+                        if (mBinding.model.name) {
+                            mResult.bindingPath.modelName = mBinding.model.name;
+                        }
                     }
+
+                    return mResult;
                 }.bind(this));
             } else {
                 this._oLogger.debug("Control " + oControl + " does not have data binding for property " + sProperty);
@@ -103,6 +110,15 @@ sap.ui.define([
         _mapBindingData: function (oBinding, oBindingInfoPart) {
             var oModel = oBinding.getModel();
             var oContext = oBinding.getContext();
+
+            if (oBinding instanceof StaticBinding) {
+                return {
+                    value: oBinding.getValue(),
+                    model: {
+                        type: "static"
+                    }
+                };
+            }
 
             return {
                 path: oBinding.getPath(),

@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -15,22 +15,6 @@ sap.ui.define(['sap/base/Log', '../../Component', '../../Element', '../../routin
 	function (Log, Component, Element, Router) {
 		"use strict";
 
-		var oEmpty = {},
-			EVENTS_BLACKLIST = {
-				"modelContextChange": oEmpty,
-				"beforeRendering": oEmpty,
-				"afterRendering": oEmpty,
-				"propertyChanged": oEmpty,
-				"aggregationChanged": oEmpty,
-				"componentCreated": oEmpty,
-				"afterInit": oEmpty,
-				"updateStarted": oEmpty,
-				"updateFinished": oEmpty,
-				"load": oEmpty,
-				"scroll": oEmpty,
-				"beforeGeometryChanged": oEmpty,
-				"geometryChanged": oEmpty
-			};
 
 		/**
 		 * Event broadcaster. This class is meant for private usages. Apps are not supposed to used it.
@@ -61,14 +45,95 @@ sap.ui.define(['sap/base/Log', '../../Component', '../../Element', '../../routin
 		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/CustomEvent)
 		 * @alias sap.ui.core.support.usage.EventBroadcaster
 		 * @private
-		 * @experimental Since 1.58
 		 * @ui5-restricted
+		 * @experimental Since 1.58
 		 */
 		var EventBroadcaster = {};
 
+
+		/*
+		 * Default ExcludeList configuration.
+		 */
+		var EventsExcludeList = {
+				global: ["modelContextChange", "beforeRendering", "afterRendering", "propertyChanged", "beforeGeometryChanged", "geometryChanged",
+						"aggregationChanged", "componentCreated", "afterInit", "updateStarted", "updateFinished", "load", "scroll"
+						],
+				controls: {}
+		};
+
+		/**
+		 * Returns the currently set ExcludeList configuration.
+		 * Returned object is copied from the original one.
+		 * In case you modify it, you have to set it by using the
+		 * <code>setEventExcludeList</code> setter in order for it to take effect.
+		 * @experimental
+		 * @since 1.65
+		 * @public
+		 */
+		EventBroadcaster.getEventsExcludeList = function() {
+			return JSON.parse(JSON.stringify(EventsExcludeList));
+		};
+
+		/**
+		 * Sets a new ExcludeList configuration.
+		 *
+		 * ExcludeList configuration should have the following structure as in the example
+		 * shown below.
+		 *
+		 * In <code>global</code> object, we set all events that we don't want to track.
+		 * In <code>controls</code> object, we can list different controls and include or
+		 * exclude events for them.
+		 *
+		 * For example, in this configuration the <code>load</code> event is exposed for the
+		 * <code>sap.m.Image</code> control regardless of it being excluded globally for all
+		 * other controls.
+		 *
+		 * For <code>sap.m.Button</code> control, we don't want to track the <code>tap</code>
+		 * event but we need to track the <code>afterRendering</code> event.
+		 *
+		 * In the case where we write in the <code>controls</code> object a control without any
+		 * excluded or included events, this control is NOT tracked at all.
+		 *
+		 * In the example configuration events coming from control
+		 * <code>sap.m.AccButton</code> are not be exposed.
+		 *
+		 * <pre>
+		 * {
+		 *		global: ["modelContextChange", "beforeRendering", "afterRendering",
+		 *				"propertyChanged", "beforeGeometryChanged", "geometryChanged",
+		 *				"aggregationChanged", "componentCreated", "afterInit",
+		 *				"updateStarted", "updateFinished", "load", "scroll"
+		 *				],
+		 *		controls: {
+		 *			"sap.m.Image": {
+		 *				include: ["load"]
+		 *			},
+		 *			"sap.m.Button": {
+		 *				exclude: ["tap"],
+		 *				include: ["afterRendering"]
+		 *			},
+		 *			"sap.m.AccButton": {}
+		 *		}
+		 *	}
+		 * </pre>
+		 * The set configuration object is copied from the given one.
+		 * @experimental
+		 * @since 1.65
+		 * @public
+		 */
+		EventBroadcaster.setEventsExcludeList = function(oConfig) {
+			if (this._isValidConfig(oConfig)) {
+				EventsExcludeList = JSON.parse(JSON.stringify(oConfig));
+			} else {
+				if (Log.isLoggable()) {
+					Log.error("Provided ExcludeList configuration is not valid. Continuing to use previously/default set configuration.");
+				}
+			}
+		};
+
 		/**
 		 * Starts broadcasting events. Consumers could stop broadcasting via
-		 * {@link sap.ui.core.support.usage.EventBroadcaster#disable EventBroadcaster.disable}
+		 * {@link sap.ui.core.support.usage.EventBroadcaster.disable EventBroadcaster.disable}
 		 * @public
 		 */
 		EventBroadcaster.enable = function () {
@@ -179,12 +244,65 @@ sap.ui.define(['sap/base/Log', '../../Component', '../../Element', '../../routin
 			window.dispatchEvent(oCustomEvent);
 		};
 
-		EventBroadcaster._shouldExpose = function (sEventId, oElement) {
-			return !EVENTS_BLACKLIST[sEventId] && EventBroadcaster._isPublicElementEvent(sEventId, oElement);
+		/**
+		 * Checks inside the configuration if the given event should be exposed.
+		 * The check is made once for the global list of excluded events
+		 * and then for the listed controls.
+		 * @param {string} sEventId the name of the event
+		 * @param {sap.ui.core.Element} oElement The event's target UI5 element.
+		 * @private
+		 */
+		EventBroadcaster._shouldExpose = function(sEventId, oElement) {
+			var oExcludeListConfig = EventBroadcaster.getEventsExcludeList(),
+				bExposeGlobal = oExcludeListConfig.global.indexOf(sEventId) === -1 && EventBroadcaster._isPublicElementEvent(sEventId, oElement),
+				bExposeControl = EventBroadcaster._isTrackableControlEvent(oExcludeListConfig, sEventId, oElement);
+
+			return bExposeGlobal && bExposeControl;
+		};
+
+		/**
+		 * Checks inside controls configuration if the given event should be exposed
+		 * for that control or if the control events should be tracked at all.
+		 * @param {object} oConfig configuration in which the check should be performed
+		 * @param {string} sEventId the name of the event
+		 * @param {sap.ui.core.Element} oElement The event's target UI5 element
+		 * @private
+		 */
+		EventBroadcaster._isTrackableControlEvent = function(oConfig, sEventId, oElement) {
+			var aExclude,
+				aInclude,
+				bTrackable = true,
+				sName = oElement.getMetadata().getName();
+
+			if (oConfig.controls[sName]) {
+
+				aExclude = oConfig.controls[sName].exclude;
+				aInclude = oConfig.controls[sName].include;
+
+				if (!aExclude && !aInclude) {
+					bTrackable = false;
+				}
+
+				if (aInclude && aInclude.indexOf(sEventId) > -1) {
+					bTrackable = true;
+				}
+				if (aExclude && aExclude.indexOf(sEventId) > -1) {
+					bTrackable = false;
+				}
+			}
+
+			return bTrackable;
 		};
 
 		EventBroadcaster._isPublicElementEvent = function (sEventId, oElement) {
 			return oElement.getMetadata().hasEvent(sEventId);
+		};
+
+		EventBroadcaster._isValidConfig = function (oConfig) {
+			var bGlobal = oConfig.hasOwnProperty("global"),
+				bControls = oConfig.hasOwnProperty("controls");
+
+			return bGlobal && bControls;
 		};
 
 		EventBroadcaster._createOwnerComponentInfo = function(oSrcElement) {
@@ -210,28 +328,6 @@ sap.ui.define(['sap/base/Log', '../../Component', '../../Element', '../../routin
 				version: sVersion || ""
 			};
 		};
-
-		// CustomEvent polyfill for IE version 9 and higher
-		function initCustomEvents() {
-			if (typeof window.CustomEvent === "function") {
-				return false;
-			}
-
-			function CustomEvent(event, params) {
-				params = params || {
-					bubbles: false,
-					cancelable: false,
-					detail: undefined
-				};
-				var evt = document.createEvent('CustomEvent');
-				evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
-				return evt;
-			}
-			CustomEvent.prototype = window.Event.prototype;
-			window.CustomEvent = CustomEvent;
-		}
-
-		initCustomEvents();
 
 		return EventBroadcaster;
 	});

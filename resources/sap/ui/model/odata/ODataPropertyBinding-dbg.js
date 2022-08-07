@@ -1,25 +1,27 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-
+/*eslint-disable max-len */
 // Provides class sap.ui.model.odata.ODataPropertyBinding
 sap.ui.define([
+	'./ODataMetaModel',
 	'sap/ui/model/Context',
 	'sap/ui/model/ChangeReason',
 	'sap/ui/model/PropertyBinding',
 	"sap/base/util/deepEqual",
 	'sap/ui/model/ChangeReason'
 ],
-	function(Context, ChangeReason, PropertyBinding, deepEqual) {
+	function(ODataMetaModel, Context, ChangeReason, PropertyBinding, deepEqual) {
 	"use strict";
 
 
 	/**
-	 *
+	 * Do <strong>NOT</strong> call this private constructor, but rather use
+	 * {@link sap.ui.model.odata.v2.ODataModel#bindProperty} instead!
 	 * @class
-	 * Property binding implementation for oData format
+	 * Property binding implementation for OData format
 	 *
 	 * @param {sap.ui.model.Model} oModel
 	 * @param {string} sPath
@@ -38,6 +40,7 @@ sap.ui.define([
 			this.oValue = this._getValue();
 			this.vOriginalValue;
 			this.getDataState().setValue(this.oValue);
+			this.setIgnoreMessages(mParameters && mParameters.ignoreMessages);
 		}
 
 	});
@@ -95,15 +98,19 @@ sap.ui.define([
 	 * Setter for context
 	 */
 	ODataPropertyBinding.prototype.setContext = function(oContext) {
+		var bForceUpdate,
+			oOldContext = this.oContext;
+
 		if (oContext && oContext.isPreliminary()) {
 			return;
 		}
 
 		if (Context.hasChanged(this.oContext, oContext)) {
-			sap.ui.getCore().getMessageManager().removeMessages(this.getDataState().getControlMessages(), true);
 			this.oContext = oContext;
 			if (this.isRelative()) {
-				this.checkUpdate();
+				bForceUpdate = !!(oOldContext !== oContext
+					&& this.getDataState().getControlMessages().length);
+				this.checkUpdate(bForceUpdate);
 			}
 		}
 	};
@@ -116,7 +123,24 @@ sap.ui.define([
 	 *
 	 */
 	ODataPropertyBinding.prototype.checkUpdate = function(bForceUpdate){
+		var sCodeListTerm,
+			that = this;
+
 		if (this.bSuspended && !bForceUpdate) {
+			return;
+		}
+
+		sCodeListTerm = ODataMetaModel.getCodeListTerm(this.sPath);
+		if (sCodeListTerm) {
+			if (this.bInitial) {
+				this.oModel.getMetaModel().fetchCodeList(sCodeListTerm).then(function (mCodeList) {
+					that.oValue = mCodeList;
+					that._fireChange({reason: ChangeReason.Change});
+				}, function () {
+					// if the code list promise rejects the binding's value remains undefined; we
+					// rely on error logging in ODataMetaModel#fetchCodeList
+				});
+			}
 			return;
 		}
 
@@ -152,10 +176,26 @@ sap.ui.define([
 	 */
 	ODataPropertyBinding.prototype.checkDataState = function(mPaths) {
 		var sCanonicalPath = this.oModel.resolve(this.sPath, this.oContext, true)
-			|| this.oModel.resolve(this.sPath, this.oContext);
+			|| this.getResolvedPath();
 
 		this.getDataState().setLaundering(!!mPaths && !!(sCanonicalPath in mPaths));
 		PropertyBinding.prototype._checkDataState.call(this, sCanonicalPath, mPaths);
+	};
+
+	/**
+	 * Returns <code>true</code>, as this binding supports the feature of not propagating model
+	 * messages to the control.
+	 *
+	 * @returns {boolean} <code>true</code>
+	 *
+	 * @public
+	 * @see sap.ui.model.Binding#getIgnoreMessages
+	 * @see sap.ui.model.Binding#setIgnoreMessages
+	 * @since 1.82.0
+	 */
+	// @override sap.ui.model.Binding#supportsIgnoreMessages
+	ODataPropertyBinding.prototype.supportsIgnoreMessages = function () {
+		return true;
 	};
 
 	return ODataPropertyBinding;

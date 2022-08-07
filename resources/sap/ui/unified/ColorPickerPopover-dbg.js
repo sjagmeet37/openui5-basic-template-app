@@ -1,12 +1,29 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.unified.ColorPickerPopover
-sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/ResponsivePopover', './ColorPicker', './library', 'sap/m/library'],
-	function (Control, Device, Button, ResponsivePopover, ColorPicker, library, mLibrary) {
+sap.ui.define([
+	'sap/ui/core/Control',
+	'sap/ui/Device',
+	'sap/m/Button',
+	'sap/m/ResponsivePopover',
+	'./ColorPicker',
+	'./library',
+	'sap/m/library',
+	"sap/ui/thirdparty/jquery"
+], function (
+	Control,
+	Device,
+	Button,
+	ResponsivePopover,
+	ColorPicker,
+	library,
+	mLibrary,
+	jQuery
+) {
 		"use strict";
 
 		// shortcut for PlacementType
@@ -15,6 +32,9 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 		// shortcut for sap.ui.unified.ColorPickerMode & sap.ui.unified.ColorPickerDisplayMode
 		var ColorPickerMode = library.ColorPickerMode,
 			ColorPickerDisplayMode = library.ColorPickerDisplayMode;
+
+		// shortcut for sap.m.ButtonType
+		var ButtonType = mLibrary.ButtonType;
 
 		/**
 		 *
@@ -27,7 +47,7 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 		 * A thin wrapper over {@link sap.ui.unified.ColorPicker} allowing the latter to be used in a popover.
 		 *
 		 * @extends sap.ui.core.Control
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @public
@@ -121,10 +141,67 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 							 */
 							alpha : {type : "string"}
 						}
+					},
+					/**
+					 * Fired when the value is changed by user interaction in the internal ColorPicker
+					 *
+					 * @since 1.85
+					 */
+					liveChange : {
+						parameters : {
+
+							/**
+							 * Parameter containing the RED value (0-255).
+							 */
+							r : {type: "int"},
+
+							/**
+							 * Parameter containing the GREEN value (0-255).
+							 */
+							g : {type: "int"},
+
+							/**
+							 * Parameter containing the BLUE value (0-255).
+							 */
+							b : {type: "int"},
+
+							/**
+							 * Parameter containing the HUE value (0-360).
+							 */
+							h : {type: "int"},
+
+							/**
+							 * Parameter containing the SATURATION value (0-100).
+							 */
+							s : {type: "int"},
+
+							/**
+							 * Parameter containing the VALUE value (0-100).
+							 */
+							v : {type: "int"},
+
+							/**
+							 * Parameter containing the LIGHTNESS value (0-100).
+							 */
+							l : {type: "int"},
+
+							/**
+							 * Parameter containing the Hexadecimal string (#FFFFFF).
+							 */
+							hex : {type: "string"},
+
+							/**
+							 * Parameter containing the alpha value (transparency).
+							 */
+							alpha : {type: "string"}
+						}
+
 					}
 				}
 			},
-			renderer: {}
+			renderer: {
+				apiVersion: 2
+			}
 		});
 
 		// get resource translation bundle;
@@ -226,6 +303,7 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 				showCloseButton: false,
 				beginButton: new Button({
 					text: oLibraryResourceBundle.getText("COLOR_PICKER_SUBMIT"),
+					type: ButtonType.Emphasized,
 					press: function () {
 						that.fireChange(that._oLastChangeCPParams);
 						oPopover.close();
@@ -239,10 +317,13 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 				content: oColorPicker
 			});
 
-			oColorPicker.attachEvent("change", function (oEvent) {
+			oColorPicker.attachChange(function (oEvent) {
 				this._handleChange(oEvent);
 			}.bind(this));
 
+			oColorPicker.attachLiveChange(function (oEvent) {
+				this.fireLiveChange(oEvent.getParameters());
+			}.bind(this));
 
 			// aria requirements for the popover implemented as delegate
 			oDelegate = {
@@ -262,7 +343,7 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 		/**
 		 * On submit fires change event of the control with parameters
 		 * taken from the event fired from the ColorPicker control.
-		 * @return {sap.ui.unified.ColorPickerPopover} <code>this</code> for method chaining.
+		 * @return {this} <code>this</code> for method chaining.
 		 * @private
 		 */
 		ColorPickerPopover.prototype._handleChange = function (oEvent) {
@@ -278,7 +359,6 @@ sap.ui.define(['sap/ui/core/Control', 'sap/ui/Device', 'sap/m/Button', 'sap/m/Re
 		 * @return {sap.ui.unified.ColorPicker} the ColorPicker.
 		 * @private
 		 */
-
 		ColorPickerPopover.prototype._createColorPicker = function () {
 			var oColorPicker = new ColorPicker(this.getId() + "-color_picker");
 

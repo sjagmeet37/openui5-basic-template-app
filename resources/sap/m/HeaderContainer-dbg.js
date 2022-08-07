@@ -1,44 +1,52 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 sap.ui.define([
-	'./library',
-	'sap/ui/core/Control',
-	'sap/ui/Device',
-	'sap/ui/core/delegate/ItemNavigation',
-	'sap/ui/core/library',
-	'sap/ui/core/IntervalTrigger',
-	'sap/ui/base/ManagedObject',
-	'sap/ui/core/Icon',
-	'./HeaderContainerRenderer',
-	"sap/base/Log",
-	"sap/ui/events/PseudoEvents",
-	"sap/ui/thirdparty/jquery",
-	// jQuery Plugin "control"
-	"sap/ui/dom/jquery/control",
-	// jQuery Plugin "scrollLeftRTL"
-	"sap/ui/dom/jquery/scrollLeftRTL",
-	// jQuery Plugin "scrollRightRTL"
-	"sap/ui/dom/jquery/scrollRightRTL",
-	// jQuery custom selectors ":sapTabbable"
-	"sap/ui/dom/jquery/Selectors"
-],
-function(
-	library,
-	Control,
-	Device,
-	ItemNavigation,
-	coreLibrary,
-	IntervalTrigger,
-	ManagedObject,
-	Icon,
-	HeaderContainerRenderer,
-	Log,
-	PseudoEvents,
-	jQuery
-) {
+		'./library',
+		'./Button',
+		'./ScrollContainer',
+		'sap/ui/core/Core',
+		'sap/ui/core/Control',
+		'sap/ui/Device',
+		'sap/m/HeaderContainerItemNavigator',
+		'sap/ui/core/delegate/ItemNavigation',
+		'sap/ui/core/library',
+		'sap/ui/core/IntervalTrigger',
+		'sap/ui/core/Icon',
+		'./HeaderContainerRenderer',
+		"sap/base/Log",
+		"sap/ui/events/KeyCodes",
+		"sap/ui/events/PseudoEvents",
+		"sap/ui/thirdparty/jquery",
+		// jQuery Plugin "control"
+		"sap/ui/dom/jquery/control",
+		// jQuery Plugin "scrollLeftRTL"
+		"sap/ui/dom/jquery/scrollLeftRTL",
+		// jQuery Plugin "scrollRightRTL"
+		"sap/ui/dom/jquery/scrollRightRTL",
+		// jQuery custom selectors ":sapTabbable"
+		"sap/ui/dom/jquery/Selectors"
+	],
+	function (
+		library,
+		Button,
+		ScrollContainer,
+		Core,
+		Control,
+		Device,
+		HeaderContainerItemNavigator,
+		ItemNavigation,
+		coreLibrary,
+		IntervalTrigger,
+		Icon,
+		HeaderContainerRenderer,
+		Log,
+		KeyCodes,
+		PseudoEvents,
+		jQuery
+	) {
 		"use strict";
 
 		// shortcut for sap.ui.core.Orientation
@@ -77,26 +85,27 @@ function(
 					}
 				}
 			},
-			renderer: function (oRM, oControl) {
-				var oInnerControl = oControl.getAggregation("item");
-				if (!oInnerControl || !oInnerControl.getVisible()) {
-					return;
-				}
+			renderer: {
+				apiVersion: 2,
+				render: function (oRM, oControl) {
+					var oInnerControl = oControl.getAggregation("item");
+					if (!oInnerControl || !oInnerControl.getVisible()) {
+						return;
+					}
 
-				oRM.write("<div");
-				oRM.writeControlData(oControl);
-				oRM.addClass("sapMHdrCntrItemCntr");
-				oRM.addClass("sapMHrdrCntrInner");
-				oRM.writeAttribute("aria-setsize", oControl.getSetSize());
-				oRM.writeAttribute("aria-posinset", oControl.getPosition());
-				oRM.writeAttribute("role", "listitem");
-				if (oControl.getAriaLabelledBy()) {
-					oRM.writeAttributeEscaped("aria-labelledby", oControl.getAriaLabelledBy());
+					oRM.openStart("div", oControl);
+					oRM.class("sapMHdrCntrItemCntr");
+					oRM.class("sapMHrdrCntrInner");
+					oRM.attr("aria-setsize", oControl.getSetSize());
+					oRM.attr("aria-posinset", oControl.getPosition());
+					oRM.attr("role", "listitem");
+					if (oControl.getAriaLabelledBy()) {
+						oRM.attr("aria-labelledby", oControl.getAriaLabelledBy());
+					}
+					oRM.openEnd();
+					oRM.renderControl(oInnerControl);
+					oRM.close("div");
 				}
-				oRM.writeClasses();
-				oRM.write(">");
-				oRM.renderControl(oInnerControl);
-				oRM.write("</div>");
 			}
 		});
 
@@ -115,7 +124,7 @@ function(
 		 * @since 1.44.0
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @public
 		 * @alias sap.m.HeaderContainer
@@ -242,6 +251,14 @@ function(
 						multiple: true,
 						singularName: "ariaLabelledBy"
 					}
+				},
+				events: {
+					/**
+					 * This event is triggered on pressing the scroll button.
+					 */
+					scroll: {
+
+					}
 				}
 			}
 		});
@@ -254,7 +271,7 @@ function(
 			this._aItemEnd = [];
 			this._bRtl = sap.ui.getCore().getConfiguration().getRTL();
 			this._oRb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
-			this._oScrollCntr = new library.ScrollContainer(this.getId() + "-scrl-cntnr", {
+			this._oScrollCntr = new ScrollContainer(this.getId() + "-scrl-cntnr", {
 				width: "100%",
 				height: "100%",
 				horizontal: !Device.system.desktop
@@ -263,7 +280,7 @@ function(
 			this.setAggregation("_scrollContainer", this._oScrollCntr, true);
 
 			if (Device.system.desktop) {
-				this._oArrowPrev = new library.Button({
+				this._oArrowPrev = new Button({
 					id: this.getId() + "-scrl-prev-button",
 					type: library.ButtonType.Transparent,
 					tooltip: this._oRb.getText("HEADERCONTAINER_BUTTON_PREV_SECTION"),
@@ -275,7 +292,7 @@ function(
 				this._oArrowPrev._bExcludeFromTabChain = true;
 				this.setAggregation("_prevButton", this._oArrowPrev, true);
 
-				this._oArrowNext = new library.Button({
+				this._oArrowNext = new Button({
 					id: this.getId() + "-scrl-next-button",
 					type: library.ButtonType.Transparent,
 					tooltip: this._oRb.getText("HEADERCONTAINER_BUTTON_NEXT_SECTION"),
@@ -303,12 +320,13 @@ function(
 						var oFocusRef = this._oScrollCntr.getDomRef("scroll");
 						var oFocusObj = this._oScrollCntr.$("scroll");
 						var aDomRefs = oFocusObj.find(".sapMHrdrCntrInner").attr("tabindex", "0");
+						oFocusRef.setAttribute("role", "list");
 
 						if (!this._oItemNavigation) {
-							this._oItemNavigation = new ItemNavigation();
+							this._oItemNavigation = new HeaderContainerItemNavigator();
 							this.addDelegate(this._oItemNavigation);
 							this._oItemNavigation.attachEvent(ItemNavigation.Events.BorderReached, this._handleBorderReached, this);
-							this._oItemNavigation.attachEvent(ItemNavigation.Events.AfterFocus, this._handleBorderReached, this);
+							this._oItemNavigation.attachEvent(ItemNavigation.Events.AfterFocus, this._handleAfterFocus, this);
 							this._oItemNavigation.attachEvent(ItemNavigation.Events.BeforeFocus, this._handleBeforeFocus, this);
 							if (Device.browser.msie || Device.browser.edge) {
 								this._oItemNavigation.attachEvent(ItemNavigation.Events.FocusAgain, this._handleFocusAgain, this);
@@ -318,6 +336,8 @@ function(
 						this._oItemNavigation.setItemDomRefs(aDomRefs);
 						this._oItemNavigation.setTabIndex0();
 						this._oItemNavigation.setCycling(false);
+
+						this._handleMobileScrolling();
 					}
 				}.bind(this)
 			});
@@ -325,6 +345,9 @@ function(
 		};
 
 		HeaderContainer.prototype.onBeforeRendering = function () {
+			var isHorizontal = this.getOrientation() === Orientation.Horizontal,
+				sIconPrev = isHorizontal ? "sap-icon://slim-arrow-left" : "sap-icon://slim-arrow-up",
+				sIconNext = isHorizontal ? "sap-icon://slim-arrow-right" : "sap-icon://slim-arrow-down";
 			if (!this.getHeight()) {
 				Log.warning("No height provided", this);
 			}
@@ -332,12 +355,15 @@ function(
 				Log.warning("No width provided", this);
 			}
 			if (Device.system.desktop) {
-				this._oArrowPrev.setIcon(this.getOrientation() === Orientation.Horizontal ? "sap-icon://slim-arrow-left" : "sap-icon://slim-arrow-up");
-				this._oArrowNext.setIcon(this.getOrientation() === Orientation.Horizontal ? "sap-icon://slim-arrow-right" : "sap-icon://slim-arrow-down");
+				this._oArrowPrev.setProperty("icon", sIconPrev, true);
+				this._oArrowNext.setProperty("icon", sIconNext, true);
 			} else if (Device.system.phone || Device.system.tablet) {
-				this._oArrowPrev.setSrc(this.getOrientation() === Orientation.Horizontal ? "sap-icon://slim-arrow-left" : "sap-icon://slim-arrow-up");
-				this._oArrowNext.setSrc(this.getOrientation() === Orientation.Horizontal ? "sap-icon://slim-arrow-right" : "sap-icon://slim-arrow-down");
+				this._oArrowPrev.setProperty("src", sIconPrev, true);
+				this._oArrowNext.setProperty("src", sIconNext, true);
 			}
+
+			// before rendering starts, content items need to be updated - see _callSuperMethod
+			this.getContent();
 		};
 
 		HeaderContainer.prototype.onAfterRendering = function () {
@@ -364,7 +390,7 @@ function(
 				oToCell = this._getParentCell(oNext);
 			}
 
-          if ( ( oFromCell && oToCell && oFromCell.id !== oToCell.id ) || ( oNext && oNext.id === this.getId() + "-after" ) || ( oNext && oNext.id === this.getId() + "-scrl-prev-button" ) || ( oNext && oNext.id === this.getId() + "-scrl-next-button" ) ) { // attempt to jump out of HeaderContainer
+			if ((oFromCell && oToCell && oFromCell.id !== oToCell.id) || (oNext && oNext.id === this.getId() + "-after") || (oNext && oNext.id === this.getId() + "-scrl-prev-button") || (oNext && oNext.id === this.getId() + "-scrl-next-button")) { // attempt to jump out of HeaderContainer
 				var oLastInnerTab = oFocusables.last().get(0);
 				if (oLastInnerTab) {
 					this._bIgnoreFocusIn = true;
@@ -387,7 +413,7 @@ function(
 			if (!oToCell || oFromCell && oFromCell.id !== oToCell.id) { // attempt to jump out of HeaderContainer
 				var sTabIndex = this.$().attr("tabindex"); // save tabindex
 				this.$().attr("tabindex", "0");
-				this.$().focus(); // set focus before the control
+				this.$().trigger("focus"); // set focus before the control
 				if (!sTabIndex) { // restore tabindex
 					this.$().removeAttr("tabindex");
 				} else {
@@ -414,50 +440,101 @@ function(
 		};
 
 		HeaderContainer.prototype.validateAggregation = function (sAggregationName, oObject, bMultiple) {
-			return this._callMethodInManagedObject("validateAggregation", sAggregationName, oObject, bMultiple);
+			return this._callSuperMethod("validateAggregation", sAggregationName, oObject, bMultiple);
 		};
 
 		HeaderContainer.prototype.getAggregation = function (sAggregationName, oObject, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("getAggregation", sAggregationName, oObject, bSuppressInvalidate);
+			return this._callSuperMethod("getAggregation", sAggregationName, oObject, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.setAggregation = function (sAggregationName, oObject, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("setAggregation", sAggregationName, oObject, bSuppressInvalidate);
+			return this._callSuperMethod("setAggregation", sAggregationName, oObject, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.indexOfAggregation = function (sAggregationName, oObject) {
-			return this._callMethodInManagedObject("indexOfAggregation", sAggregationName, oObject);
+			return this._callSuperMethod("indexOfAggregation", sAggregationName, oObject);
 		};
 
 		HeaderContainer.prototype.insertAggregation = function (sAggregationName, oObject, iIndex, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("insertAggregation", sAggregationName, oObject, iIndex, bSuppressInvalidate);
+			return this._callSuperMethod("insertAggregation", sAggregationName, oObject, iIndex, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.addAggregation = function (sAggregationName, oObject, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("addAggregation", sAggregationName, oObject, bSuppressInvalidate);
+			return this._callSuperMethod("addAggregation", sAggregationName, oObject, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.removeAggregation = function (sAggregationName, oObject, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("removeAggregation", sAggregationName, oObject, bSuppressInvalidate);
+			return this._callSuperMethod("removeAggregation", sAggregationName, oObject, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.removeAllAggregation = function (sAggregationName, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("removeAllAggregation", sAggregationName, bSuppressInvalidate);
+			return this._callSuperMethod("removeAllAggregation", sAggregationName, bSuppressInvalidate);
 		};
 
 		HeaderContainer.prototype.destroyAggregation = function (sAggregationName, bSuppressInvalidate) {
-			return this._callMethodInManagedObject("destroyAggregation", sAggregationName, bSuppressInvalidate);
+			return this._callSuperMethod("destroyAggregation", sAggregationName, bSuppressInvalidate);
 		};
 
 		/* =========================================================== */
 		/* Private methods                                             */
 		/* =========================================================== */
+		/**
+		 * Handle the key dwon event for Arrow Naviagtion.
+		 * @param {jQuery.Event} oEvent - the keyboard event.
+		 * @private
+		 */
+		 HeaderContainer.prototype.onkeydown = function(oEvent) {
+			var bHorizontal = this.getOrientation() === Orientation.Horizontal,
+				$prevButton = this.$("prev-button-container"),
+				$nextButton = this.$("next-button-container"),
+				iScrollSize, iButtonSize = 0,
+				aItems = this._filterVisibleItems();
+			if (oEvent.which === KeyCodes.ARROW_RIGHT && bHorizontal) {
+				iScrollSize = aItems[oEvent.srcControl.mProperties.position - 1].$().parent().outerWidth(true);
+				if (iScrollSize < this._getSize($prevButton.is(":visible"))){
+					this._scroll((iScrollSize - iButtonSize), this.getScrollTime());
+				}
+			} else if (oEvent.which === KeyCodes.ARROW_LEFT && bHorizontal) {
+				iScrollSize = aItems[oEvent.srcControl.mProperties.position - 1].$().parent().outerWidth(true);
+				if (iScrollSize < this._getSize($nextButton.is(":visible"))) {
+					if (!$nextButton.is(":visible")) {
+						var OFFSET = 10;
+						if (iScrollSize + OFFSET < this._getSize(true)) {
+							iButtonSize = $nextButton.width() + OFFSET;
+						} else {
+							iButtonSize = $nextButton.width();
+						}
+					}
+					this._scroll(-(iScrollSize - iButtonSize), this.getScrollTime());
+				}
+			}
+			if (oEvent.which === KeyCodes.ARROW_DOWN && !bHorizontal) {
+				iScrollSize = aItems[oEvent.srcControl.mProperties.position - 1].$().parent().outerHeight(true);
+				if (iScrollSize < this._getSize($prevButton.is(":visible"))) {
+					this._scroll((iScrollSize - iButtonSize), this.getScrollTime());
+				}
+			} else if (oEvent.which === KeyCodes.ARROW_UP && !bHorizontal) {
+				iScrollSize = aItems[oEvent.srcControl.mProperties.position - 1].$().parent().outerHeight(true);
+				if (iScrollSize < this._getSize($nextButton.is(":visible"))) {
+					if (!$nextButton.is(":visible")) {
+						var OFFSET = 10;
+						if (iScrollSize + OFFSET < this._getSize(true)) {
+							iButtonSize = $nextButton.height() + OFFSET;
+						} else {
+							iButtonSize = $nextButton.wheightidth();
+						}
+					}
+					this._scroll(-(iScrollSize - iButtonSize), this.getScrollTime());
+				}
+			}
+		};
 		HeaderContainer.prototype._setScrollInProcess = function (value) {
 			this.bScrollInProcess = value;
 		};
 
 		HeaderContainer.prototype._scroll = function (iDelta, iDuration) {
 			this._setScrollInProcess(true);
+			this.fireScroll();
 			setTimeout(this._setScrollInProcess.bind(this, false), iDuration + 300);
 			if (this.getOrientation() === Orientation.Horizontal) {
 				this._hScroll(iDelta, iDuration);
@@ -656,8 +733,8 @@ function(
 			}
 		};
 
-		HeaderContainer.prototype._filterVisibleItems = function() {
-			return this.getContent().filter(function(oItem) {
+		HeaderContainer.prototype._filterVisibleItems = function () {
+			return this.getContent().filter(function (oItem) {
 				return oItem.getVisible();
 			});
 		};
@@ -686,7 +763,8 @@ function(
 				var bScrollForward = false;
 
 				var realHeight = oBarHead.scrollHeight;
-				var availableHeight = oBarHead.clientHeight;
+				//Take height using offsetHeight to handle Different Browsers Compatibility for a empty Header container during Vertical Orientation.
+				var availableHeight = oBarHead.offsetHeight;
 
 				if (Math.abs(realHeight - availableHeight) === 1) {
 					realHeight = availableHeight;
@@ -723,6 +801,41 @@ function(
 			}
 		};
 
+
+		HeaderContainer.prototype._handleMobileScrolling = function () {
+			if (Core.isMobile()) {
+				var $scroll = this.$("scrl-cntnr-scroll"),
+					bIsHorizontal = this.getOrientation() === Orientation.Horizontal,
+					sProperty = bIsHorizontal ? "clientX" : "clientY",
+					iPos = 0,
+					that = this,
+					bScrolling = false;
+
+				$scroll.on("touchstart", function (oEvent) {
+					bScrolling = true;
+					iPos = oEvent.targetTouches[0][sProperty];
+				});
+
+				$scroll.on("touchmove", function (oEvent) {
+					if (bScrolling) {
+						var fCurrent = oEvent.targetTouches[0][sProperty],
+							iDelta = iPos - fCurrent,
+							oScroller = that._oScrollCntr.getDomRef();
+
+						bIsHorizontal ? oScroller.scrollLeft += iDelta : oScroller.scrollTop += iDelta;
+						iPos = fCurrent;
+
+						// prevent navigation
+						oEvent.preventDefault();
+					}
+				});
+
+				$scroll.on("touchend", function () {
+					bScrolling = false;
+				});
+			}
+		};
+
 		HeaderContainer.prototype._checkHOverflow = function () {
 			var oBarHead = this._oScrollCntr.getDomRef(), $ButtonContainer;
 
@@ -737,7 +850,8 @@ function(
 				var bScrollForward = false;
 
 				var realWidth = oBarHead.scrollWidth;
-				var availableWidth = oBarHead.clientWidth;
+				//Take width using offsetWidth to handle Different Browsers Compatibility for a empty Header container during Horizontal Orientation.
+				var availableWidth = oBarHead.offsetWidth;
 
 				if (Math.abs(realWidth - availableWidth) === 1) {
 					realWidth = availableWidth;
@@ -855,7 +969,30 @@ function(
 			}
 		};
 
+		HeaderContainer.prototype._handleAfterFocus = function (oEvt) {
+			//For Edge and IE on mousedown input element not getting focused.Hence setting focus manually.
+			var oSrcEvent = oEvt.getParameter("event");
+			if ((Device.browser.msie || Device.browser.edge) && oSrcEvent.type === "mousedown" && oSrcEvent.srcControl instanceof sap.m.Input) {
+				oSrcEvent.srcControl.focus();
+			}
+			if (Device.browser.msie && this.bScrollInProcess) {
+				return;
+			}
+			var iIndex = oEvt.getParameter("index");
+			if (iIndex === 0) {
+				this._scroll(this._getScrollValue(false), this.getScrollTime());
+			} else if (iIndex === this._filterVisibleItems().length - 1) {
+				this._scroll(this._getScrollValue(true), this.getScrollTime());
+			}
+
+		};
+
 		HeaderContainer.prototype._handleFocusAgain = function (oEvt) {
+			//For Edge and IE on mousedown input element not getting focused.Hence setting focus manually.
+			var oSrcEvent = oEvt.getParameter("event");
+			if ((Device.browser.msie || Device.browser.edge) && oSrcEvent.type === "mousedown" && oSrcEvent.srcControl instanceof sap.m.Input) {
+				oSrcEvent.srcControl.focus();
+			}
 			oEvt.getParameter("event").preventDefault();
 		};
 
@@ -894,21 +1031,33 @@ function(
 			return wrapped;
 		};
 
-		HeaderContainer._AGGREGATION_FUNCTIONS = ["validateAggregation", "validateAggregation", "getAggregation", "setAggregation", "indexOfAggregation", "removeAggregation"];
+		HeaderContainer._AGGREGATION_FUNCTIONS = ["validateAggregation", "getAggregation", "setAggregation", "indexOfAggregation", "removeAggregation"];
 		HeaderContainer._AGGREGATION_FUNCTIONS_FOR_INSERT = ["insertAggregation", "addAggregation"];
-		HeaderContainer.prototype._callMethodInManagedObject = function (sFunctionName, sAggregationName) {
+		HeaderContainer.prototype._callSuperMethod = function (sFunctionName, sAggregationName) {
 			var args = Array.prototype.slice.call(arguments);
 			if (sAggregationName === "content") {
 				var oContent = args[2];
 				args[1] = "content";
 				if (oContent instanceof Control) {
-					if (((HeaderContainer._AGGREGATION_FUNCTIONS ? Array.prototype.indexOf.call(HeaderContainer._AGGREGATION_FUNCTIONS, sFunctionName) : -1)) > -1 && oContent.getParent() instanceof HeaderContainerItemContainer) {
+					if (HeaderContainer._AGGREGATION_FUNCTIONS.indexOf(sFunctionName) > -1 && oContent.getParent() instanceof HeaderContainerItemContainer) {
 						args[2] = oContent.getParent();
-					} else if (((HeaderContainer._AGGREGATION_FUNCTIONS_FOR_INSERT ? Array.prototype.indexOf.call(HeaderContainer._AGGREGATION_FUNCTIONS_FOR_INSERT, sFunctionName) : -1)) > -1) {
+					} else if (HeaderContainer._AGGREGATION_FUNCTIONS_FOR_INSERT.indexOf(sFunctionName) > -1) {
 						args[2] = new HeaderContainerItemContainer({
 							item: oContent
 						});
 					}
+				}
+
+				//Traverse through the ScrollContainer Contents and remove the Contents which does not contain any Inner Items.
+				var aContentsToRemove = [];
+				this._oScrollCntr.getContent().forEach(function (oContent, index) {
+					if (!oContent.getItem()) {
+						aContentsToRemove.push(index);
+					}
+				});
+
+				for (var i = 0; i < aContentsToRemove.length; i++ ) {
+					this._oScrollCntr.removeContent(aContentsToRemove[i]);
 				}
 
 				var vResult = this._oScrollCntr[sFunctionName].apply(this._oScrollCntr, args.slice(1));
@@ -917,18 +1066,34 @@ function(
 					var aContent = this._oScrollCntr.getContent();
 					var aAriaLabelledBy = this.getAriaLabelledBy();
 
+					//Set the Position, Size based on visible containers
+					var iPosition = 1;
+					var iVisibleSize = aContent.filter(function (oContainer) {
+						return oContainer.getItem().getVisible();
+					}).length;
+
 					for (var i = 0; i < aContent.length; i++) {
 						var oItem = aContent[i];
-						oItem.setPosition(i + 1);
-						oItem.setSetSize(aContent.length);
-						oItem.setAriaLabelledBy(aAriaLabelledBy[i]);
+						if (oItem.getItem().getVisible()) {
+							oItem.setVisible(true);
+							oItem.setPosition(iPosition);
+							oItem.setSetSize(iVisibleSize);
+							oItem.setAriaLabelledBy(aAriaLabelledBy[i]);
+							iPosition++;
+						} else {
+							oItem.setVisible(false);
+						}
 					}
 				}
 
 				return this._unWrapHeaderContainerItemContainer(vResult);
 			} else {
-				return ManagedObject.prototype[sFunctionName].apply(this, args.slice(1));
+				return Control.prototype[sFunctionName].apply(this, args.slice(1));
 			}
+		};
+
+		HeaderContainer.prototype._callMethodInManagedObject = function() {
+			throw new TypeError("Method no longer exists: HeaderContainer.prototype._callMethodInManagedObject");
 		};
 
 		HeaderContainer.prototype._getParentCell = function (oDomElement) {
@@ -960,7 +1125,7 @@ function(
 			var $Tabbables = oRelatedControl.getTabbables ? oRelatedControl.getTabbables() : $LastFocused.find(":sapTabbable");
 
 			// get the last tabbable item or itself and focus
-			$Tabbables.eq(-1).add($LastFocused).eq(-1).focus();
+			$Tabbables.eq(-1).add($LastFocused).eq(-1).trigger("focus");
 		};
 
 		return HeaderContainer;

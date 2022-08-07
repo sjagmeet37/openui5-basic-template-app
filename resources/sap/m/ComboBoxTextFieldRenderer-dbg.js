@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 sap.ui.define([
@@ -18,7 +18,7 @@ sap.ui.define([
 		 * @namespace
 		 */
 		var ComboBoxTextFieldRenderer = Renderer.extend(InputBaseRenderer);
-
+		ComboBoxTextFieldRenderer.apiVersion = 2;
 		/**
 		 * CSS class to be applied to the root element of the control.
 		 *
@@ -34,24 +34,14 @@ sap.ui.define([
 		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
 		 */
 		ComboBoxTextFieldRenderer.writeInnerAttributes = function(oRm, oControl) {
-			oRm.writeAttribute("autocomplete", "off");
-			oRm.writeAttribute("autocorrect", "off");
-			oRm.writeAttribute("autocapitalize", "off");
-			oRm.writeAttribute("type", "text");
-		};
-
-		/**
-		 * Add role combobox to the outer div.
-		 *
-		 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
-		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
-		 */
-		ComboBoxTextFieldRenderer.writeAccAttributes = function(oRm, oControl) {
-			if (sap.ui.getCore().getConfiguration().getAccessibility()) {
-				oRm.writeAttribute("aria-haspopup", "listbox");
-				oRm.writeAttribute("aria-autocomplete", "inline");
-				oRm.writeAttribute("role", "combobox");
-			}
+			oRm.attr("role", "combobox");
+			oRm.attr("aria-haspopup", "listbox");
+			oRm.attr("aria-autocomplete", "both");
+			oRm.attr("aria-expanded", "false");
+			oRm.attr("autocomplete", "off");
+			oRm.attr("autocorrect", "off");
+			oRm.attr("autocapitalize", "off");
+			oRm.attr("type", "text");
 		};
 
 		/**
@@ -61,21 +51,6 @@ sap.ui.define([
 		 */
 		ComboBoxTextFieldRenderer.getAriaRole = function() {};
 
-
-		/**
-		 * Returns the inner aria describedby ids for the accessibility.
-		 *
-		 * @param {sap.ui.core.Control} oControl an object representation of the control.
-		 * @returns {String|undefined}
-		 */
-		ComboBoxTextFieldRenderer.getAriaDescribedBy = function(oControl) {
-			var sAriaDescribedBy = InputBaseRenderer.getAriaDescribedBy.apply(this, arguments);
-			if (Device.browser.msie) {
-				return (sAriaDescribedBy || "") + " " + oControl.oInvisibleText.getId();
-			}
-			return sAriaDescribedBy;
-		};
-
 		/**
 		 * Add extra styles for input container.
 		 *
@@ -83,7 +58,7 @@ sap.ui.define([
 		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
 		 */
 		ComboBoxTextFieldRenderer.addOuterStyles = function(oRm, oControl) {
-			oRm.addStyle("max-width", oControl.getMaxWidth());
+			oRm.style("max-width", oControl.getMaxWidth());
 		};
 
 		return ComboBoxTextFieldRenderer;

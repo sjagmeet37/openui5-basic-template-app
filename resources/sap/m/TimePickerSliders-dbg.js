@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -50,7 +50,7 @@ sap.ui.define([
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @public
@@ -185,7 +185,7 @@ sap.ui.define([
 		 * @private
 		 */
 		TimePickerSliders.prototype.exit = function () {
-			this.$().off(!!Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", this._onmousewheel);
+			this.$().off(Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", this._onmousewheel);
 			Device.resize.detachHandler(this._fnOrientationChanged);
 		};
 
@@ -194,12 +194,12 @@ sap.ui.define([
 		 * @private
 		 */
 		TimePickerSliders.prototype.onAfterRendering = function() {
-			this.$().off(!!Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", this._onmousewheel);
-			this.$().on(!!Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", jQuery.proxy(this._onmousewheel, this));
+			this.$().off(Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", this._onmousewheel);
+			this.$().on(Device.browser.firefox ? "DOMMouseScroll" : "mousewheel", jQuery.proxy(this._onmousewheel, this));
 
 			this.$().on('selectstart', fnFalse);
 
-			if (!Device.browser.msie && this._getShouldOpenSliderAfterRendering()) {
+			if (this._getShouldOpenSliderAfterRendering()) {
 				/* This method is called here prematurely to ensure slider loading on time.
 				 * Make sure _the browser native focus_ is not actually set on the early call (the "true" param)
 				 * because that fires events and results in unexpected behaviors */
@@ -217,7 +217,7 @@ sap.ui.define([
 		 * Sets the <code>localeId</code> property.
 		 *
 		 * @param {string} sLocaleId The ID of the Locale
-		 * @returns {sap.m.TimePickerSliders} this instance, used for chaining
+		 * @returns {this} this instance, used for chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setLocaleId = function(sLocaleId) {
@@ -246,7 +246,7 @@ sap.ui.define([
 		 * Sets <code>support2400</code>.
 		 *
 		 * @param {boolean} bSupport2400
-		 * @returns {sap.m.TimePickerSliders} this instance, used for chaining
+		 * @returns {this} this instance, used for chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setSupport2400 = function (bSupport2400) {
@@ -263,7 +263,7 @@ sap.ui.define([
 		 * Sets the time <code>displayFormat</code>.
 		 *
 		 * @param {string} sFormat New display format
-		 * @returns {sap.m.TimePickerSliders} this instance, used for chaining
+		 * @returns {this} this instance, used for chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setDisplayFormat = function (sFormat) {
@@ -276,31 +276,9 @@ sap.ui.define([
 		};
 
 		/**
-		 * Sets the text for the picker label.
-		 *
-		 * @param {string} sLabelText A text for the label
-		 * @returns {sap.m.TimePickerSliders} this instance, used for chaining
-		 * @public
-		 */
-		TimePickerSliders.prototype.setLabelText = function(sLabelText) {
-			var $ContainerLabel;
-
-			this.setProperty("labelText", sLabelText, true);
-
-			if (!Device.system.desktop) {
-				$ContainerLabel = jQuery(this.getDomRef("label"));
-				if ($ContainerLabel) {
-					$ContainerLabel.html(sLabelText);
-				}
-			}
-
-			return this;
-		};
-
-		/**
 		 * Sets the minutes slider step.
 		 * @param {int} value The step used to generate values for the minutes slider
-		 * @returns {sap.m.TimePickerSliders} <code>this</code> to allow method chaining
+		 * @returns {this} <code>this</code> to allow method chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setMinutesStep = function(value) {
@@ -316,7 +294,7 @@ sap.ui.define([
 		/**
 		 * Sets the seconds slider step.
 		 * @param {int} value The step used to generate values for the seconds slider
-		 * @returns {sap.m.TimePickerSliders} <code>this</code> to allow method chaining
+		 * @returns {this} <code>this</code> to allow method chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setSecondsStep = function(value) {
@@ -330,37 +308,9 @@ sap.ui.define([
 		};
 
 		/**
-		 * Sets the width of the <code>TimepickerSliders</code> container.
-		 * @param {sap.ui.core.CSSSize} sWidth The width of the <code>TimepickerSliders</code< as CSS size
-		 * @returns {sap.m.TimePickerSliders} Pointer to the control instance to allow method chaining
-		 * @public
-		 */
-		TimePickerSliders.prototype.setWidth = function (sWidth) {
-			this.setProperty("width", sWidth, true);
-
-			this.$().css("width", sWidth);
-
-			return this;
-		};
-
-		/**
-		 * Sets the height of the <code>TimepickerSliders</code> container.
-		 * @param {sap.ui.core.CSSSize} sHeight The height of the <code>TimepickerSliders</code> as CSS size
-		 * @returns {sap.m.TimePickerSliders} Pointer to the control instance to allow method chaining
-		 * @public
-		 */
-		TimePickerSliders.prototype.setHeight = function (sHeight) {
-			this.setProperty("height", sHeight, true);
-
-			this.$().css("height", sHeight);
-
-			return this;
-		};
-
-		/**
 		 * Sets the value of the <code>TimepickerSliders</code> container.
 		 * @param {string} sValue The value of the <code>TimepickerSliders</code>
-		 * @returns {sap.m.TimePickerSliders} Pointer to the control instance to allow method chaining
+		 * @returns {this} Pointer to the control instance to allow method chaining
 		 * @public
 		 */
 		TimePickerSliders.prototype.setValue = function (sValue) {
@@ -394,7 +344,7 @@ sap.ui.define([
 		/**
 		 * Gets the time values from the sliders, as a date object.
 		 *
-		 * @returns {Object} A JavaScript date object
+		 * @returns {Date} A JavaScript date object
 		 * @public
 		 */
 		TimePickerSliders.prototype.getTimeValues = function () {
@@ -438,7 +388,7 @@ sap.ui.define([
 		/**
 		 * Collapses all the slider controls.
 		 *
-		 * @returns {sap.m.TimePickerSliders} Pointer to the control instance to allow method chaining
+		 * @returns {this} Pointer to the control instance to allow method chaining
 		 * @public
 		 *
 		 */
@@ -460,7 +410,7 @@ sap.ui.define([
 		/**
 		 * Opens first slider.
 		 *
-		 * @returns {sap.m.TimePickerSliders} Pointer to the control instance to allow method chaining
+		 * @returns {this} Pointer to the control instance to allow method chaining
 		 *
 		 * @public
 		 */
@@ -494,11 +444,7 @@ sap.ui.define([
 
 			// Cross frame check for a date should be performed here otherwise setDateValue would fail in OPA tests
 			// because Date object in the test is different than the Date object in the application (due to the iframe).
-			// We can use jQuery.type or this method:
-			// function isValidDate (date) {
-			//	return date && Object.prototype.toString.call(date) === "[object Date]" && !isNaN(date);
-			//}
-			if (oDate && jQuery.type(oDate) !== "date") {
+			if (Object.prototype.toString.call(oDate) !== "[object Date]" || isNaN(oDate)) {
 				throw new Error("Date must be a JavaScript date object; " + this);
 			}
 

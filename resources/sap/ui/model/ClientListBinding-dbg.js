@@ -1,9 +1,9 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-
+/*eslint-disable max-len */
 // Provides the JSON model implementation of a list binding
 sap.ui.define([
 	'./ChangeReason',
@@ -13,7 +13,7 @@ sap.ui.define([
 	'./FilterProcessor',
 	'./Sorter',
 	'./SorterProcessor',
-	"sap/ui/thirdparty/jquery"
+	"sap/base/util/each"
 ],
 	function(
 		ChangeReason,
@@ -23,7 +23,7 @@ sap.ui.define([
 		FilterProcessor,
 		Sorter,
 		SorterProcessor,
-		jQuery
+		each
 	) {
 	"use strict";
 
@@ -53,6 +53,7 @@ sap.ui.define([
 		constructor : function(oModel, sPath, oContext, aSorters, aFilters, mParameters){
 			ListBinding.apply(this, arguments);
 
+			this.mNormalizeCache = {};
 			this.oModel.checkFilterOperation(this.aApplicationFilters);
 			this.oCombinedFilter = FilterProcessor.combineFilters(this.aFilters, this.aApplicationFilters);
 
@@ -88,7 +89,7 @@ sap.ui.define([
 		var iEndIndex = Math.min(iStartIndex + iLength, this.aIndices.length),
 		oContext,
 		aContexts = [],
-		sPrefix = this.oModel.resolve(this.sPath, this.oContext);
+		sPrefix = this.getResolvedPath();
 
 		if (sPrefix && !sPrefix.endsWith("/")) {
 			sPrefix += "/";
@@ -165,7 +166,6 @@ sap.ui.define([
 		this.bIgnoreSuspend = true;
 
 		this._fireChange({reason: ChangeReason.Sort});
-		// TODO remove this if the sorter event gets removed which is deprecated
 		this._fireSort({sorter: aSorters});
 		this.bIgnoreSuspend = false;
 
@@ -197,11 +197,11 @@ sap.ui.define([
 	 * When no <code>sFilterType</code> is given, any previously configured application
 	 * filters are cleared and the given filters are used as control filters
 	 *
-	 * @param {sap.ui.model.Filter[]} aFilters Array of filter objects
+	 * @param {sap.ui.model.Filter|sap.ui.model.Filter[]} aFilters Single filter object or an array of filter objects
 	 * @param {sap.ui.model.FilterType} [sFilterType=undefined] Type of the filter which should
 	 *  be adjusted; if no type is given, then any previously configured application filters are
 	 *  cleared and the given filters are used as control filters
-	 * @return {sap.ui.model.ListBinding} returns <code>this</code> to facilitate method chaining
+	 * @returns {this} returns <code>this</code> to facilitate method chaining
 	 * @throws {Error} When one of the filters uses an operator that is not supported by the underlying model implementation
 	 * @public
 	 */
@@ -237,7 +237,6 @@ sap.ui.define([
 		this.bIgnoreSuspend = true;
 
 		this._fireChange({reason: ChangeReason.Filter});
-		// TODO remove this if the filter event gets removed which is deprecated
 		if (sFilterType == FilterType.Application) {
 			this._fireFilter({filters: this.aApplicationFilters});
 		} else {
@@ -264,7 +263,7 @@ sap.ui.define([
 
 		this.aIndices = FilterProcessor.apply(this.aIndices, this.oCombinedFilter, function(vRef, sPath) {
 			return that.oModel.getProperty(sPath, that.oList[vRef]);
-		});
+		}, this.mNormalizeCache);
 
 		this.iLength = this.aIndices.length;
 	};
@@ -277,7 +276,7 @@ sap.ui.define([
 			oMap = {},
 			sValue,
 			that = this;
-		jQuery.each(this.oList, function(i, oContext) {
+		each(this.oList, function(i, oContext) {
 			sValue = that.oModel.getProperty(sPath, oContext);
 			if (!oMap[sValue]) {
 				oMap[sValue] = true;

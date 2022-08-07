@@ -1,6 +1,6 @@
 /*
  * ! OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -87,7 +87,7 @@ sap.ui.define([
 	 *        dimensions and measures for table personalization.
 	 * @extends sap.m.P13nPanel
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @constructor
 	 * @public
 	 * @since 1.34.0
@@ -153,21 +153,17 @@ sap.ui.define([
 				changeChartType: {}
 			}
 		},
-		renderer: function(oRm, oControl) {
-			oRm.write("<div");
-			oRm.writeControlData(oControl);
-			oRm.addClass("sapMP13nColumnsPanel");
-			oRm.writeClasses();
-			oRm.write(">");
-
-			var aContent = oControl.getAggregation("content");
-			if (aContent) {
-				aContent.forEach(function(oContent) {
-					oRm.renderControl(oContent);
+		renderer: {
+			apiVersion: 2,
+			render: function(oRm, oControl){
+				oRm.openStart("div", oControl);
+				oRm.class("sapMP13nColumnsPanel");
+				oRm.openEnd();
+				oControl.getAggregation("content").forEach(function(oChildren){
+					oRm.renderControl(oChildren);
 				});
+				oRm.close("div");
 			}
-
-			oRm.write("</div>");
 		}
 	});
 
@@ -526,7 +522,7 @@ sap.ui.define([
 			return;
 		}
 		sap.ui.getCore().applyChanges();
-		if (!!oItem.getDomRef()) {
+		if (oItem.getDomRef()) {
 			oItem.focus();
 		}
 	};
@@ -715,7 +711,7 @@ sap.ui.define([
 						group: 2
 					})
 				}), new OverflowToolbarButton({
-					icon: IconPool.getIconURI("slim-arrow-up"),
+					icon: IconPool.getIconURI("navigation-up-arrow"),
 					text: oRb.getText('COLUMNSPANEL_MOVE_UP'),
 					tooltip: oRb.getText('COLUMNSPANEL_MOVE_UP'),
 					type: ButtonType.Transparent,
@@ -729,7 +725,7 @@ sap.ui.define([
 						group: 1
 					})
 				}), new OverflowToolbarButton({
-					icon: IconPool.getIconURI("slim-arrow-down"),
+					icon: IconPool.getIconURI("navigation-down-arrow"),
 					text: oRb.getText('COLUMNSPANEL_MOVE_DOWN'),
 					tooltip: oRb.getText('COLUMNSPANEL_MOVE_DOWN'),
 					type: ButtonType.Transparent,
@@ -934,7 +930,7 @@ sap.ui.define([
 		if (iIndex < 0) {
 			return null;
 		}
-		return this._oTable.getBinding("items").getContexts()[iIndex].getObject().columnKey;
+		return this._oTable.getBinding("items").getContexts(undefined, undefined, undefined, true)[iIndex].getObject().columnKey;
 	};
 
 	P13nDimMeasurePanel.prototype._getModelItemIndexByColumnKey = function(sColumnKey) {

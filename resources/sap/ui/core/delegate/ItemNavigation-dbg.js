@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -82,7 +82,7 @@ sap.ui.define([
 	 * @param {Element[]} aItemDomRefs Array of DOM references representing the items for the navigation
 	 * @param {boolean} [bNotInTabChain=false] Whether the selected element should be in the tab chain or not
 	 *
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @alias sap.ui.core.delegate.ItemNavigation
 	 * @public
 	 */
@@ -108,7 +108,7 @@ sap.ui.define([
 			this.iTabIndex = -1;
 
 			// whether the active element should get a tabindex of 0 or -1
-			this.iActiveTabIndex = !!bNotInTabChain ? -1 : 0;
+			this.iActiveTabIndex = bNotInTabChain ? -1 : 0;
 
 			// the initial focusedindex
 			this.iFocusedIndex = -1;
@@ -215,7 +215,7 @@ sap.ui.define([
 	 * </pre>
 	 *
 	 * @param {Object} oDisabledModifiers Object that includes event type with disabled keys as an array
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setDisabledModifiers = function(oDisabledModifiers) {
@@ -259,7 +259,7 @@ sap.ui.define([
 	 * Sets the root DOM reference surrounding the items
 	 *
 	 * @param {object} oDomRef Root DOM reference
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setRootDomRef = function(oDomRef) {
@@ -268,9 +268,9 @@ sap.ui.define([
 		// in nested ItemNavigation the tabindex must only be set at the root DOM from the parent ItemNavigation
 		if (!jQuery(this.oDomRef).data("sap.INItem")) {
 			if (this.iFocusedIndex >= 0) {
-				jQuery(this.oDomRef).attr("tabIndex", this.iTabIndex);
+				jQuery(this.oDomRef).attr("tabindex", this.iTabIndex);
 			} else {
-				jQuery(this.oDomRef).attr("tabIndex", this.iActiveTabIndex);
+				jQuery(this.oDomRef).attr("tabindex", this.iActiveTabIndex);
 			}
 		}
 
@@ -303,15 +303,29 @@ sap.ui.define([
 	 * Sets the item DOM references as an array for the items
 	 *
 	 * @param {Element[]} aItemDomRefs Array of DOM references or DOM node list object, representing the items
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setItemDomRefs = function(aItemDomRefs) {
 		assert(typeof aItemDomRefs === "object" && typeof aItemDomRefs.length === "number", "aItemDomRefs must be an array of DOM elements");
 		this.aItemDomRefs = aItemDomRefs;
 
-		if (this.iFocusedIndex > aItemDomRefs.length - 1) {
-			this.iFocusedIndex = aItemDomRefs.length - 1;
+		// recalculate focused index
+		if (this.iFocusedIndex > -1) {
+			var iItemsLength = aItemDomRefs.length;
+			if (this.iFocusedIndex > iItemsLength - 1) {
+				this.iFocusedIndex = iItemsLength - 1;
+			}
+
+			var oActiveElement = document.activeElement;
+			if (oActiveElement && oActiveElement != this.aItemDomRefs[this.iFocusedIndex]) {
+				for (var i = 0; i < iItemsLength; i++) {
+					if (oActiveElement == this.aItemDomRefs[i]) {
+						this.iFocusedIndex = i;
+						break;
+					}
+				}
+			}
 		}
 
 		// in nested ItemNavigation the tabindex must only be set if it's the focused item of the parent ItemNavigation
@@ -324,9 +338,9 @@ sap.ui.define([
 				// the tabindex is set to 0. For all items with tabindex 0 the tabindex is set to -1
 				// Items without tabindex are checked for focusable on the first focusin on the root.
 				if (i == this.iFocusedIndex && !$Item.data("sap.INRoot")) {
-					$Item.attr("tabIndex", this.iActiveTabIndex);
+					$Item.attr("tabindex", this.iActiveTabIndex);
 				} else if ($Item.attr("tabindex") == "0") { // set tabindex to -1 only if already set to 0
-					$Item.attr("tabIndex", -1);
+					$Item.attr("tabindex", -1);
 				}
 
 				$Item.data("sap.INItem", true);
@@ -350,7 +364,7 @@ sap.ui.define([
 	 * be invisible (because e.g. a popup closed), meaning the focusable check will fail.
 	 * So the items <code>tabindex</code>es are set if the rootDom is focused the first time.
 	 *
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @private
 	 */
 	ItemNavigation.prototype.setItemsTabindex = function() {
@@ -362,9 +376,9 @@ sap.ui.define([
 
 					// not focusable items (like labels) must not get a tabindex attribute
 					if (i == this.iFocusedIndex && !$Item.data("sap.INRoot")) {
-						$Item.attr("tabIndex", this.iActiveTabIndex);
+						$Item.attr("tabindex", this.iActiveTabIndex);
 					} else {
-						$Item.attr("tabIndex", -1);
+						$Item.attr("tabindex", -1);
 					}
 				}
 			}
@@ -379,14 +393,14 @@ sap.ui.define([
 	 * In the nested case the <code>tabindex</code> is ruled by the parent <code>ItemNavigation</code>,
 	 * only the top items can have <code>tabindex</code> = 0.
 	 *
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @private
 	 */
 	ItemNavigation.prototype.setNestedItemsTabindex = function() {
 		if (jQuery(this.oDomRef).data("sap.INItem")) {
 			for (var i = 0; i < this.aItemDomRefs.length; i++) {
 				if (this.aItemDomRefs[i] && jQuery(this.aItemDomRefs[i]).attr("tabindex") == "0") { // separators return null here
-					jQuery(this.aItemDomRefs[i]).attr("tabIndex", -1);
+					jQuery(this.aItemDomRefs[i]).attr("tabindex", -1);
 				}
 			}
 		}
@@ -426,7 +440,7 @@ sap.ui.define([
 	 * If cycling is disabled the navigation stops at the first and last item, if the corresponding arrow keys are used.
 	 *
 	 * @param {boolean} bCycling Set to true if cycling should be done, else false
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setCycling = function(bCycling) {
@@ -446,7 +460,7 @@ sap.ui.define([
 	 * 	<li>Page-down moves focus to the last row, not to the last cell like in table mode</li>
 	 * </ul>
 	 *
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setTableMode = function(bTableMode, bTableList) {
@@ -462,7 +476,7 @@ sap.ui.define([
 	 * Sets the page size of the item navigation to allow Page Up and Page Down keys.
 	 *
 	 * @param {int} iPageSize The page size, needs to be at least 1
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setPageSize = function(iPageSize) {
@@ -474,7 +488,7 @@ sap.ui.define([
 	 * Sets the selected index if the used control supports selection.
 	 *
 	 * @param {int} iIndex Index of the first selected item
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setSelectedIndex = function(iIndex) {
@@ -491,7 +505,7 @@ sap.ui.define([
 	 *
 	 * @param {int} iColumns Count of columns for the table mode or cycling mode
 	 * @param {boolean} bNoColumnChange Forbids jumping to an other column with Arrow Up and Arrow Down keys
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setColumns = function(iColumns, bNoColumnChange) {
@@ -505,7 +519,7 @@ sap.ui.define([
 	 *
 	 * @param {boolean} bStayInRow HOME -> go to first item in row; END -> go to last item in row
 	 * @param {boolean} bCtrlEnabled HOME/END with CTRL -> go to first/last item of all
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @public
 	 */
 	ItemNavigation.prototype.setHomeEndColumnMode = function(bStayInRow, bCtrlEnabled) {
@@ -522,9 +536,10 @@ sap.ui.define([
 	 *
 	 * @param {int} iIndex Index of the item to focus
 	 * @param {jQuery.Event} oEvent Event that leads to focus change
+	 * @param {boolean} bPreventScroll Whether scrolling should be prevented when focusing the DOM element
 	 * @private
 	 */
-	ItemNavigation.prototype.focusItem = function(iIndex, oEvent) {
+	ItemNavigation.prototype.focusItem = function(iIndex, oEvent, bPreventScroll) {
 
 		Log.info("FocusItem: " + iIndex + " iFocusedIndex: " + this.iFocusedIndex, "focusItem", "ItemNavigation");
 
@@ -577,7 +592,9 @@ sap.ui.define([
 		}
 
 		Log.info("Set Focus on ID: " + this.aItemDomRefs[this.iFocusedIndex].id, "focusItem", "ItemNavigation");
-		this.aItemDomRefs[this.iFocusedIndex].focus();
+		this.aItemDomRefs[this.iFocusedIndex].focus({
+			preventScroll: bPreventScroll
+		});
 
 		this.fireEvent(ItemNavigation.Events.AfterFocus, {
 			index: iIndex,
@@ -589,7 +606,7 @@ sap.ui.define([
 	 * Sets the focused index to the given index.
 	 *
 	 * @param {int} iIndex Index of the item
-	 * @return {sap.ui.core.delegate.ItemNavigation} <code>this</code> to allow method chaining
+	 * @return {this} <code>this</code> to allow method chaining
 	 * @private
 	 */
 	ItemNavigation.prototype.setFocusedIndex = function(iIndex) {
@@ -609,15 +626,15 @@ sap.ui.define([
 			iIndex = this.aItemDomRefs.length - 1;
 		}
 
-		jQuery(this.oDomRef).attr("tabIndex", this.iTabIndex);
+		jQuery(this.oDomRef).attr("tabindex", this.iTabIndex);
 
 		if (this.iFocusedIndex !== -1 && this.aItemDomRefs.length > this.iFocusedIndex) {
-			jQuery(this.aItemDomRefs[this.iFocusedIndex]).attr("tabIndex", -1);
+			jQuery(this.aItemDomRefs[this.iFocusedIndex]).attr("tabindex", -1);
 
 			// if focus is in nested ItemNavigation but is moved to an other item, remove tabindex from nested item
 			$Item = jQuery(this.aItemDomRefs[this.iFocusedIndex]);
 			if ($Item.data("sap.INRoot") && iIndex != this.iFocusedIndex) {
-				jQuery($Item.data("sap.INRoot").aItemDomRefs[$Item.data("sap.INRoot").iFocusedIndex]).attr("tabIndex", -1);
+				jQuery($Item.data("sap.INRoot").aItemDomRefs[$Item.data("sap.INRoot").iFocusedIndex]).attr("tabindex", -1);
 			}
 		}
 
@@ -628,7 +645,7 @@ sap.ui.define([
 		if (!$Item.data("sap.INRoot")) {
 
 			// in nested ItemNavigation the nested item gets the tabindex
-			jQuery(oFocusItem).attr("tabIndex", this.iActiveTabIndex);
+			jQuery(oFocusItem).attr("tabindex", this.iActiveTabIndex);
 		}
 
 		return this;
@@ -800,7 +817,7 @@ sap.ui.define([
 				}
 
 				if (!oEvent.relatedControlId || containsOrEquals(oParentDomRef, sap.ui.getCore().byId(oEvent.relatedControlId).getFocusDomRef())) {
-					jQuery(this.aItemDomRefs[this.iFocusedIndex]).attr("tabIndex", -1);
+					jQuery(this.aItemDomRefs[this.iFocusedIndex]).attr("tabindex", -1);
 				}
 			}
 
@@ -830,7 +847,7 @@ sap.ui.define([
 		// set the focus to the clicked element or back to the last
 		var oSource = oEvent.target;
 
-		var checkFocusableParent = function( oDomRef, oItem){
+		var checkFocusableParent = function(oDomRef, oItem) {
 
 			// as table cell might have focusable content that have not focusable DOM insinde
 			// the table cell should not get the focus but the focusable element inside
@@ -858,7 +875,9 @@ sap.ui.define([
 					if (!this.bTableMode) {
 
 						// the mousedown occured inside of an item
-						this.focusItem(i, oEvent);
+						// prevent scrolling when setting focus to the DOM element to make sure
+						// that the "mouseup" event is fired on the same DOM element
+						this.focusItem(i, oEvent, true /* prevent scrolling*/);
 
 						// no oEvent.preventDefault(); because cursor will not be set in Textfield
 						// no oEvent.stopPropagation(); because e.g. DatePicker can not close popup
@@ -866,7 +885,9 @@ sap.ui.define([
 						// only focus the items if the click did not happen on a
 						// focusable element!
 						if (oItem === oSource || !checkFocusableParent(oSource, oItem)) {
-							this.focusItem(i, oEvent);
+							// prevent scrolling when setting focus to the DOM element to make sure
+							// that the "mouseup" event is fired on the same DOM element
+							this.focusItem(i, oEvent, true /* prevent scrolling*/);
 
 							// the table mode requires not to prevent the default
 							// behavior on click since we want to allow text selection
@@ -1324,7 +1345,7 @@ sap.ui.define([
 				iIndex = iRow * this.iColumns;
 			}
 		} else {
-			if (!!(oEvent.metaKey || oEvent.ctrlKey) && !this._bCtrlEnabled) {
+			if ((oEvent.metaKey || oEvent.ctrlKey) && !this._bCtrlEnabled) {
 
 				// do not handle ctrl
 				return;
@@ -1399,7 +1420,7 @@ sap.ui.define([
 			}
 		} else {
 
-			if (!!(oEvent.metaKey || oEvent.ctrlKey) && !this._bCtrlEnabled) {
+			if ((oEvent.metaKey || oEvent.ctrlKey) && !this._bCtrlEnabled) {
 
 				// do not handle ctrl
 				return;

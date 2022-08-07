@@ -1,19 +1,20 @@
 /*!
 * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
 */
 
 // Provides control sap.m.Text
 sap.ui.define([
 	'./library',
+	'sap/ui/core/Core',
 	'sap/ui/core/Control',
 	'sap/ui/core/library',
 	'sap/ui/Device',
 	'sap/m/HyphenationSupport',
 	"./TextRenderer"
 ],
-function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer) {
+function(library, Core, Control, coreLibrary, Device, HyphenationSupport, TextRenderer) {
 	"use strict";
 
 	// shortcut for sap.ui.core.TextAlign
@@ -24,6 +25,9 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 
 	// shortcut for sap.m.WrappingType
 	var WrappingType = library.WrappingType;
+
+	// shortcut for sap.m.EmptyIndicator
+	var EmptyIndicatorMode = library.EmptyIndicatorMode;
 
 	/**
 	 * Constructor for a new Text.
@@ -47,10 +51,10 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	 * to <code>true</code>.
 	 *
 	 * @extends sap.ui.core.Control
-	 * @implements sap.ui.core.IShrinkable, sap.ui.core.IFormContent
+	 * @implements sap.ui.core.IShrinkable, sap.ui.core.IFormContent, sap.ui.core.ISemanticFormContent
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -65,6 +69,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 			interfaces: [
 				"sap.ui.core.IShrinkable",
 				"sap.ui.core.IFormContent",
+				"sap.ui.core.ISemanticFormContent",
 				"sap.m.IHyphenation"
 			],
 			library: "sap.m",
@@ -119,7 +124,14 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 				 *
 				 * @since 1.51
 				 */
-				renderWhitespace: { type: "boolean", group: "Appearance", defaultValue: false }
+				renderWhitespace: { type: "boolean", group: "Appearance", defaultValue: false },
+
+				/**
+				 * Specifies if an empty indicator should be displayed when there is no text.
+				 *
+				 * @since 1.87
+				 */
+				emptyIndicatorMode: { type: "sap.m.EmptyIndicatorMode", group: "Appearance", defaultValue: EmptyIndicatorMode.Off }
 			},
 
 			designtime: "sap/m/designtime/Text.designtime"
@@ -162,7 +174,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	Text.prototype.ellipsis = '...';
 
 	/**
-	 * Defines whether browser supports native line clamp or not and if browser is Chrome
+	 * Defines whether browser supports native line clamp or not
 	 *
 	 * @since 1.13.2
 	 * @returns {boolean}
@@ -170,9 +182,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	 * @readonly
 	 * @static
 	 */
-	Text.hasNativeLineClamp = (function () {
-		return typeof document.documentElement.style.webkitLineClamp != "undefined" && Device.browser.chrome;
-	})();
+	Text.hasNativeLineClamp = ("webkitLineClamp" in document.documentElement.style);
 
 	/**
 	 * To prevent from the layout thrashing of the <code>textContent</code> call, this method
@@ -180,7 +190,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	 *
 	 * @protected
 	 * @param {HTMLElement} oDomRef DOM reference of the text node container.
-	 * @param {String} [sNodeValue] new Node value.
+	 * @param {string} [sNodeValue] new Node value.
 	 * @since 1.30.3
 	 */
 	Text.setNodeValue = function (oDomRef, sNodeValue) {
@@ -191,37 +201,6 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 		} else {
 			oDomRef.textContent = sNodeValue;
 		}
-	};
-
-	/**
-	 * Sets the text.
-	 *
-	 * @public
-	 * @param {string} sText Text value.
-	 * @returns {sap.m.Text} this Text reference for chaining.
-	 */
-	Text.prototype.setText = function (sText) {
-		// suppress invalidation of text property setter
-		this.setProperty("text", sText, true);
-
-		// check text dom ref
-		var oDomRef = this.getTextDomRef();
-		if (oDomRef) {
-			// update the node value of the DOM text
-			Text.setNodeValue(oDomRef, HyphenationSupport.getTextForRender(this, "main"));
-
-			// toggles the sapMTextBreakWord class when the text value is changed
-			if (this.getWrapping()) {
-				// no space text must break
-				if (sText && !/\s/.test(sText)) {
-					this.$().addClass("sapMTextBreakWord");
-				} else {
-					this.$().removeClass("sapMTextBreakWord");
-				}
-			}
-		}
-
-		return this;
 	};
 
 	/**
@@ -254,9 +233,26 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 			this.hasMaxLines() &&
 			!this.canUseNativeLineClamp()) {
 
-			// set max-height for maxLines support
-			this.clampHeight();
+				if (Core.isThemeApplied()) {
+					// set max-height for maxLines support
+					this.clampHeight();
+				} else {
+					Core.attachThemeChanged(this._handleThemeLoad, this);
+				}
 		}
+	};
+
+	/**
+	 * Fired when the theme is loaded
+	 *
+	 * @private
+	 */
+	Text.prototype._handleThemeLoad = function() {
+
+		// set max-height for maxLines support
+		this.clampHeight();
+
+		Core.detachThemeChanged(this._handleThemeLoad, this);
 	};
 
 	/**
@@ -297,7 +293,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	 *
 	 * @since 1.20
 	 * @protected
-	 * @return {Boolean}
+	 * @return {boolean}
 	 */
 	Text.prototype.canUseNativeLineClamp = function () {
 		// has line clamp feature
@@ -311,7 +307,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 		}
 
 		// is text direction inherited as rtl
-		if (this.getTextDirection() == TextDirection.Inherit && sap.ui.getCore().getConfiguration().getRTL()) {
+		if (this.getTextDirection() == TextDirection.Inherit && Core.getConfiguration().getRTL()) {
 			return false;
 		}
 
@@ -497,7 +493,7 @@ function(library, Control, coreLibrary, Device, HyphenationSupport, TextRenderer
 	 * Gets a map of texts which should be hyphenated.
 	 *
 	 * @private
-	 * @returns {map} The texts to be hyphenated.
+	 * @returns {Object<string,string>} The texts to be hyphenated.
 	 */
 	Text.prototype.getTextsToBeHyphenated = function () {
 		return {

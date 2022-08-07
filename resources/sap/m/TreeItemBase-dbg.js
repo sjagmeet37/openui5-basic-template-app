@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -30,7 +30,7 @@ sap.ui.define([
 	 * @extends sap.m.ListItemBase
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -157,7 +157,7 @@ sap.ui.define([
 	/**
 	 * Gets the expanding information of the node.
 	 *
-	 * @returns {Boolean}
+	 * @returns {boolean}
 	 * @public
 	 * @since 1.42.0
 	 */
@@ -177,11 +177,10 @@ sap.ui.define([
 
 		// update the binding context
 		var oTree = this.getTree();
-		var oBinding = null;
+		var oBinding = oTree ? oTree.getBinding("items") : null;
 		var iIndex = -1;
 
-		if (oTree) {
-			oBinding = oTree.getBinding("items");
+		if (oTree && oBinding) {
 			iIndex = oTree.indexOfItem(this);
 			if (oTree.getMode() === ListMode.SingleSelect) {
 				oBinding.setSelectedIndex(iIndex);
@@ -201,25 +200,30 @@ sap.ui.define([
 	/**
 	 * Gets the expander control for rendering purposes.
 	 *
-	 * @returns {Boolean}
+	 * @returns {sap.ui.core.Control}
 	 * @private
 	 * @since 1.42.0
 	 */
 	TreeItemBase.prototype._getExpanderControl = function() {
-		var sSrc = this.CollapsedIconURI;
+		var sSrc = this.CollapsedIconURI,
+			oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m"),
+			sIconTooltip = oBundle.getText("TREE_ITEM_EXPAND_NODE");
+
 		if (this.getExpanded()) {
 			sSrc = this.ExpandedIconURI;
+			sIconTooltip = oBundle.getText("TREE_ITEM_COLLAPSE_NODE");
 		}
 
 		if (this._oExpanderControl) {
 			this._oExpanderControl.setSrc(sSrc);
+			this._oExpanderControl.setTooltip(sIconTooltip);
 			return this._oExpanderControl;
 		}
 
 		this._oExpanderControl = new Icon({
 			id: this.getId() + "-expander",
 			src: sSrc,
-			useIconTooltip: false,
+			tooltip: sIconTooltip,
 			noTabStop: true
 		}).setParent(this, null, true).addStyleClass("sapMTreeItemBaseExpander").attachPress(function(oEvent) {
 			this.informTree("ExpanderPressed");
@@ -228,44 +232,26 @@ sap.ui.define([
 		return this._oExpanderControl;
 	};
 
-	/**
-	 * Gets expander information.
-	 *
-	 * @private
-	 * @since 1.46.0
-	 */
-	TreeItemBase.prototype._updateExpander = function() {
-		if (this._oExpanderControl) {
-			var sSrc = this.CollapsedIconURI;
-			if (this.getExpanded()) {
-				sSrc = this.ExpandedIconURI;
-			}
-			this._oExpanderControl.setSrc(sSrc);
-			this.$().attr("aria-expanded", this.getExpanded());
+	TreeItemBase.prototype.invalidate = function() {
+		ListItemBase.prototype.invalidate.apply(this, arguments);
+		this._bInvalidated = true;
+	};
 
-			// make the expander visible
-			if (!this.isLeaf()) {
-				this.$().removeClass("sapMTreeItemBaseLeaf");
-			}
-
-			// update the indentation again
-			var iIndentation = this._getPadding(),
-				sStyleRule = sap.ui.getCore().getConfiguration().getRTL() ? "paddingRight" : "paddingLeft";
-			this.$().css(sStyleRule, iIndentation + "rem");
-
-		}
+	TreeItemBase.prototype.onAfterRendering = function() {
+		ListItemBase.prototype.onAfterRendering.apply(this, arguments);
+		this._bInvalidated = false;
 	};
 
 	TreeItemBase.prototype.setBindingContext = function() {
 		ListItemBase.prototype.setBindingContext.apply(this, arguments);
-		this._updateExpander();
+		this.invalidate();
 		return this;
 	};
 
 	/**
 	 * Gets the indentation of the node for rendering purposes.
 	 *
-	 * @returns {Boolean}
+	 * @returns {float}
 	 * @private
 	 * @since 1.42.0
 	 */

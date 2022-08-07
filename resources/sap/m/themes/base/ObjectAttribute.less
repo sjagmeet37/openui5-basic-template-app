@@ -50,31 +50,16 @@
 	text-overflow: ellipsis;
 }
 
-.sapMListTblCell .sapMObjectAttributeActive {
+.sapMObjectAttributeActive{
 	white-space: normal;
 	word-break: break-word;
-}
-
-html[data-sap-ui-browser^='ie'], html[data-sap-ui-browser^='ed'] {
-	.sapMListTblCell .sapMObjectAttributeActive {
-		word-break: break-all;
+	.sapMObjectAttributeTitle,
+	.sapMObjectAttributeText {
+		white-space: normal;
+		vertical-align: top;
+		/* we need this otherwise the focus get broken when the link is on more lines */
+		display: inline-block;
 	}
-}
-
-.sapMObjectAttributeActive .sapMObjectAttributeTitle,
-.sapMObjectAttributeActive .sapMObjectAttributeText {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 50%;
-	vertical-align: top;
-	/* we need this otherwise the focus get broken when the link is on more lines */
-	display: inline-block;
-}
-
-.sapMListTblCell .sapMObjectAttributeActive .sapMObjectAttributeTitle,
-.sapMListTblCell .sapMObjectAttributeActive .sapMObjectAttributeText {
-	white-space: normal;
 }
 
 .sapMObjectAttributeText > .sapMLnk {
@@ -111,12 +96,6 @@ html.sap-desktop .sapMObjectAttributeActive:focus {
 	line-height: normal;
 }
 
-html[data-sap-ui-browser^='ie'], html[data-sap-ui-browser^='ed'] {
-	.sapMObjectAttributeActive:focus .sapMObjectAttributeText::after {
-		outline-style: dashed;
-	}
-}
-
 /*=========================================== */
 /* Custom design for Responsive Object Header */
 /*=========================================== */
@@ -151,7 +130,7 @@ html[data-sap-ui-browser^='ie'], html[data-sap-ui-browser^='ed'] {
 	font-size: @sapMFontMediumSize;
 	font-weight: normal;
 	color: @sapUiContentLabelColor;
-	white-space: nowrap;
+	white-space: pre;
 	max-width: 0.5rem;
 	margin-left: -0.5rem;
 	overflow: auto;

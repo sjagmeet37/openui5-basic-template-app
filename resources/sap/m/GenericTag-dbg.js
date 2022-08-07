@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -53,7 +53,7 @@ sap.ui.define([
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -65,7 +65,8 @@ sap.ui.define([
 		metadata: {
 			library : "sap.m",
 			interfaces : [
-				"sap.m.IOverflowToolbarContent"
+				"sap.m.IOverflowToolbarContent",
+				"sap.m.IOverflowToolbarFlexibleContent"
 			],
 			properties : {
 				/**
@@ -74,7 +75,7 @@ sap.ui.define([
 				text: { type : "string", defaultValue: ""},
 				/**
 				 * Determines the control status that is represented in different colors,
-				 * including the the color bar and the color and type of the displayed icon.
+				 * including the color bar and the color and type of the displayed icon.
 				 */
 				status: { type : "sap.ui.core.ValueState", defaultValue : ValueState.None },
 				/**
@@ -124,7 +125,7 @@ sap.ui.define([
 	 *
 	 * Default value is <code>None</code>.
 	 * @param {sap.ui.core.ValueState} sStatus New value for property <code>status</code>.
-	 * @returns {sap.m.GenericTag} <code>this</code> to allow method chaining.
+	 * @returns {this} <code>this</code> to allow method chaining.
 	 * @public
 	 */
 
@@ -134,6 +135,25 @@ sap.ui.define([
 		this._getStatusIcon().setSrc(sStatus !== ValueState.None ? Icons[sStatus] : null);
 
 		return this;
+	};
+
+	GenericTag.prototype.setValue = function(oValue) {
+		var oPreviousValue = this.getValue();
+		if (oPreviousValue) {
+			oValue.detachEvent("_change", this._fireValueChanged, this);
+		}
+
+		this.setAggregation("value", oValue);
+		oValue.attachEvent("_change", this._fireValueChanged, this);
+
+		this._fireValueChanged();
+
+		return this;
+	};
+
+	// Fires invalidation event for OverflowToolbar
+	GenericTag.prototype._fireValueChanged = function() {
+		this.fireEvent("_valueChanged");
 	};
 
 	/**
@@ -209,13 +229,24 @@ sap.ui.define([
 			this._toggleActiveGenericTag(true);
 		}
 
+		if (oEvent.which === KeyCodes.SHIFT || oEvent.which === KeyCodes.ESCAPE) {
+			this._bShouldInterupt = this._bSpacePressed;
+		}
+
+		// Prevent browser scrolling in case of SPACE key
+		if (oEvent.which === KeyCodes.SPACE) {
+			this._bSpacePressed = true;
+
+			oEvent.preventDefault();
+		}
+
 		if (oEvent.which === KeyCodes.ENTER) {
 			this.firePress(/* no parameters */);
 		}
 	};
 
 	/**
-	 * Handle the key up event for SPACE and ENTER.
+	 * Handle the key up event for SPACE.
 	 * @param {jQuery.Event} oEvent - the keyboard event.
 	 * @private
 	 */
@@ -225,7 +256,11 @@ sap.ui.define([
 		}
 
 		if (oEvent.which === KeyCodes.SPACE) {
-			this.firePress(/* no parameters */);
+			if (!this._bShouldInterupt) {
+				this.firePress(/* no parameters */);
+			}
+			this._bShouldInterupt = false;
+			this._bSpacePressed = false;
 		}
 	};
 
@@ -278,7 +313,8 @@ sap.ui.define([
 	 */
 	GenericTag.prototype.getOverflowToolbarConfig = function() {
 		var oConfig = {
-			canOverflow: true
+			canOverflow: true,
+			invalidationEvents: ["_valueChanged"]
 		};
 
 		oConfig.onBeforeEnterOverflow = this._onBeforeEnterOverflow;

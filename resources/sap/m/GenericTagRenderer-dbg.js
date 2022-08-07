@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -18,7 +18,9 @@ sap.ui.define([
 		//shortcut for sap.ui.core.ValueState
 		ValueState = coreLibrary.ValueState,
 		oCore = sap.ui.getCore(),
-		GenericTagRenderer = {};
+		GenericTagRenderer = {
+			apiVersion: 2
+		};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -29,21 +31,24 @@ sap.ui.define([
 
 	GenericTagRenderer.render = function(oRm, oControl) {
 		var aLabelledBy = this._getAriaLabelledBy(oControl),
-			oResourceBundle = oCore.getLibraryResourceBundle("sap.m");
+			oResourceBundle = oCore.getLibraryResourceBundle("sap.m"),
+			sTooltip = oControl.getTooltip_AsString();
 
-		oRm.openStart("div");
+		oRm.openStart("div", oControl);
 		oRm.class("sapMGenericTag");
-		oRm.attr("id", oControl.getId());
 		oRm.attr("tabindex", 0);
-		oRm.controlData(oControl);
 
 		oRm.class("sapMGenericTag" + oControl.getStatus());
 
 		oRm.accessibilityState(oControl, {
 			role: "button",
 			roledescription: oResourceBundle.getText("GENERICTAG_ROLEDESCRIPTION"),
-			labelledBy: aLabelledBy.join(" ")
+			labelledby: aLabelledBy.join(" ")
 		});
+
+		if (sTooltip) {
+			oRm.attr("title", sTooltip);
+		}
 
 		oRm.openEnd();
 
@@ -78,9 +83,8 @@ sap.ui.define([
 	};
 
 	GenericTagRenderer.renderText = function (oRm, oControl) {
-		oRm.openStart("span");
+		oRm.openStart("span", oControl.getId() + "-text");
 		oRm.class("sapMGenericTagText");
-		oRm.attr("id", oControl.getId() + "-text");
 		oRm.openEnd();
 		oRm.text(oControl.getText());
 		oRm.close("span");
@@ -92,20 +96,20 @@ sap.ui.define([
 			return;
 		}
 
-		oRm.openStart("span");
+		oRm.openStart("span", oControl.getId() + "-status");
 		oRm.class("sapUiInvisibleText");
-		oRm.attr("id", oControl.getId() + "-status");
 		oRm.attr("aria-hidden", "true");
 		oRm.openEnd();
 
-		oRm.write(this._getGenericTagStatusText(oControl));
+		oRm.text(this._getGenericTagStatusText(oControl));
 
 		oRm.close("span");
 	};
 
 	GenericTagRenderer._getAriaLabelledBy = function(oControl) {
 		var aLabelledBy = [],
-			sId = oControl.getId();
+			sId = oControl.getId(),
+			sTagValueId = this._getTagValueId(oControl);
 
 		if (oControl.getStatus() !== ValueState.None) {
 			aLabelledBy.push(sId + "-status");
@@ -114,7 +118,7 @@ sap.ui.define([
 		aLabelledBy.push(sId + "-text");
 
 		aLabelledBy.push(
-			oControl.getValueState() === GenericTagValueState.Error ? sId + "-errorIcon" : this._getTagValueId(oControl)
+			oControl.getValueState() === GenericTagValueState.Error ? sId + "-errorIcon" : sTagValueId
 		);
 
 		return aLabelledBy;
@@ -122,7 +126,6 @@ sap.ui.define([
 
 	GenericTagRenderer._getGenericTagStatusText = function(oControl) {
 		var oResourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m"),
-			sRoleDescription = oResourceBundle.getText("GENERICTAG_ROLEDESCRIPTION"),
 			sARIAStatusText;
 
 		switch (oControl.getStatus()) {
@@ -142,7 +145,7 @@ sap.ui.define([
 				// No aria status text
 		}
 
-		return sRoleDescription + " " + sARIAStatusText;
+		return sARIAStatusText;
 	};
 
 	GenericTagRenderer._getTagValueId = function(oControl) {

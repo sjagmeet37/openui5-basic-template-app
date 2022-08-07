@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -19,11 +19,11 @@
 		// Provides class sap.ui.core.plugin.LessSupport
 		sap.ui.define('sap/ui/core/plugin/LessSupport', [
 			'sap/ui/thirdparty/jquery',
-			'sap/ui/core/Core',
 			'sap/ui/core/ThemeCheck',
 			'sap/base/Log',
-			'sap/base/util/UriParameters'],
-			function(jQuery, Core, ThemeCheck, Log, UriParameters) {
+			'sap/base/util/UriParameters',
+			'sap/ui/core/Core' // provides sap.ui.getCore()
+		], function(jQuery, ThemeCheck, Log, UriParameters) {
 
 			var LESS_FILENAME = "library.source";
 			var CSS_FILENAME = "library";
@@ -37,7 +37,7 @@
 			 *        feature - DO NOT USE IN PRODUCTIVE SCENARIOS!!
 			 *
 			 * @author Peter Muessig
-			 * @version 1.64.0
+			 * @version 1.96.2
 			 * @private
 			 * @alias sap.ui.core.plugin.LessSupport
 			 */
@@ -57,7 +57,7 @@
 				Log.warning("  NOT FOR PRODUCTIVE USAGE! LessSupport is an experimental feature which might change in future!");
 
 				// get the URI parameters
-				var oUriParams = new UriParameters(window.location.href);
+				var oUriParams = UriParameters.fromQuery(window.location.search);
 				var sNoLess = oUriParams.get("sap-ui-xx-noless");
 				if (sNoLess) {
 					sNoLess = sNoLess.toLowerCase();

@@ -6,11 +6,17 @@
 @_sap_m_QuickView_HorizontalLayoutMarginBottom: 2rem;
 @_sap_m_QuickView_HorizontalLayoutIconFontSize: 2.25rem;
 @_sap_m_QuickView_PagePaddingTop: 3rem;
-@_sap_m_QuickView_Compact_PagePaddingTop: 2.5rem;
+@_sap_m_QuickView_TitleMaxHeight: 2.25rem;
+
+@_sap_m_QuickViewCard_PagePadding: 0;
 
 .sapMQuickView .sapMNav,
 .sapMQuickViewCard .sapMNav {
 	white-space: nowrap;
+}
+
+.sapMQuickViewCard .sapUiHLayoutChildWrapper a {
+	margin-right: 1px; // this is needed for the focus to be visible on the right side (BCP 1980423560)
 }
 
 .sapMQuickViewCard.sapMQuickViewCardNoScroll {
@@ -63,7 +69,7 @@ html.sap-tablet .sapMQuickViewPage .sapUiForm .sapUiFormResGrid > div {
 
 .sapUiSizeCompact .sapMQuickView.sapMPopover .sapMQuickViewPage.sapMScrollContScroll,
 .sapUiSizeCompact .sapMQuickView.sapMPopover .sapMQuickViewPage.sapMPage {
-	padding-top: @_sap_m_QuickView_Compact_PagePaddingTop;
+	padding-top: 2.5rem;
 }
 
 html.sap-phone .sapMQuickViewPage.sapMNavItem.sapMPage {
@@ -73,7 +79,7 @@ html.sap-phone .sapMQuickViewPage.sapMNavItem.sapMPage {
 html.sap-desktop .sapMQuickViewPage.sapMPage > header,
 html.sap-tablet .sapMQuickViewPage.sapMPage > header {
 	position: absolute;
-	height: 3rem;
+	height: @_sap_m_QuickView_PagePaddingTop;
 	top: 0;
 	left: 0;
 	right: 0;
@@ -95,19 +101,13 @@ html.sap-tablet .sapMQuickViewPage > section {
 	padding: 1rem;
 }
 
+.sapMQuickViewCard .sapMQuickViewPage {
+	padding: @_sap_m_QuickViewCard_PagePadding;
+	box-sizing: border-box;
+}
+
 .sapMQuickViewPage .sapUiFormResGridCont > div {
 	padding: 0;
-}
-
-.sapMQuickViewPage .sapUiHLayout .sapUiIcon {
-	line-height: 3rem;
-	margin-right: .75rem;
-	font-size: @_sap_m_QuickView_HorizontalLayoutIconFontSize;
-	font-weight: normal;
-}
-
-.sapMQuickViewPage .sapUiHLayout .sapUiIcon:before {
-	line-height: 3rem;
 }
 
 .sapMQuickViewPage .sapUiVlt .sapMText {
@@ -136,16 +136,9 @@ html.sap-tablet .sapMQuickViewPage > section {
 	left: -1px;
 }
 
-.sapMQuickViewPage {
-	.sapMQuickViewThumbnail {
-		font-family: SAP-icons;
-		font-size: 2.5rem;
-		font-weight: normal;
-		width: 3rem;
-		height: 3rem;
-		background-color: @sapUiContentImagePlaceholderBackground;
-		color: @sapUiContentImagePlaceholderForegroundColor;
-	}
+.sapMQuickViewPage .sapMQuickViewThumbnail {
+	display: block;
+	margin-right: 0.75rem;
 }
 
 .sapMQuickViewPage .sapUiHLayout {
@@ -158,14 +151,14 @@ html.sap-tablet .sapMQuickViewPage > section {
 }
 
 .sapMQuickViewCard .sapUiHLayoutChildWrapper:only-child {
-  width: 100%;
+	width: 100%;
 }
 
 html.sap-phone .sapMQuickViewPage .sapUiHLayout {
 	margin: 1rem 0 0 0.75rem;
 }
 
-.sapMQuickViewPage .sapUiHLayoutChildWrapper + .sapUiHLayoutChildWrapper {
+.sapMQuickViewPage .sapUiHLayoutChildWrapper + .sapUiHLayoutChildWrapper:last-child {
 	width: ~'calc(100% - 3.75rem)';
 }
 
@@ -175,7 +168,7 @@ html.sap-phone .sapMQuickViewPage .sapUiHLayout {
 }
 
 .sapMQuickViewPage .sapUiVltCell:first-child {
-	max-height: 2.25rem;
+	max-height: @_sap_m_QuickView_TitleMaxHeight;
 	margin-bottom: 0.5rem;
 	overflow: hidden;
 }
@@ -187,12 +180,7 @@ html.sap-phone .sapMQuickViewPage .sapUiHLayout {
 	overflow: hidden;
 }
 
-.sapMQuickViewPage .sapUiIcon {
-	margin: 1px;
-}
-
 .sapMQuickViewPage .sapUiSimpleForm .sapUiIcon {
-	margin: 0;
 	width: 100%;
 	text-align: right;
 	outline: none;
@@ -219,7 +207,7 @@ html.sap-tablet .sapMQuickViewHeader {
 	font-size: @sapMFontHeader6Size;
 }
 
-.sapMQuickViewPage h1,
+.sapMQuickViewPage h3,
 .sapMQuickViewPage .sapUiForm .sapUiFormTitle {
 	font-family: @sapUiFontHeaderFamily;
 	font-size: @sapMFontHeader5Size;
@@ -235,22 +223,22 @@ html.sap-tablet .sapMQuickViewHeader {
 	font-weight: @sapUiFontHeaderWeight;
 	line-height: normal;
 	white-space: normal;
-  	color: @sapUiLink;
+	color: @sapUiLink;
 
-  	&:active {
+	&:active {
 		color: @sapUiLinkActive;
 	}
 
-  	&:visited {
-	  	color: @sapUiLinkVisited;
+	&:visited {
+		color: @sapUiLinkVisited;
 	}
 
-  	&hover:not(.sapMLnkDsbl) {
+	&hover:not(.sapMLnkDsbl) {
 		color: @sapUiLinkHover;
 	}
 }
 
-.sapMQuickViewPage .sapUiHLayout h1 span {
+.sapMQuickViewPage .sapUiHLayout h3 span {
 	white-space: normal;
 }
 
@@ -265,9 +253,8 @@ html.sap-tablet .sapMQuickViewHeader {
 }
 
 .sapMQuickViewPage .sapUiIcon:focus,
-html.sap-phone .sapMQuickViewPage .sapMLnk:focus,
-html.sap-tablet .sapMQuickViewPage .sapMLnk:focus {
-  outline: none;
+html.sap-phone .sapMQuickViewPage .sapMLnk:focus {
+	outline: none;
 }
 
 html.sap-phone .sapMPanel .sapMQuickViewCard {
@@ -276,4 +263,15 @@ html.sap-phone .sapMPanel .sapMQuickViewCard {
 
 html.sap-tablet.sap-ios .sapMPanel .sapMQuickViewCard {
 	-webkit-overflow-scrolling: auto;
+}
+
+.sapMQuickViewPage .sapMPageEnableScrolling {
+	outline: none;
+}
+
+/* Compact size */
+.sapUiSizeCompact {
+	.sapMQuickViewPage.sapMPage > header.sapMPageHeader {
+		height: 2.5rem;
+	}
 }

@@ -1,20 +1,22 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.PullToRefresh.
 sap.ui.define([
-	'jquery.sap.global',
+	"sap/ui/thirdparty/jquery",
 	'./library',
 	'sap/ui/core/Control',
 	'sap/ui/Device',
 	'./PullToRefreshRenderer',
 	"sap/ui/events/KeyCodes",
-	"sap/base/security/encodeXML"
+	"sap/base/security/encodeXML",
+	"sap/ui/core/InvisibleText",
+	"sap/m/BusyIndicator"
 ],
-	function(jQuery, library, Control, Device, PullToRefreshRenderer, KeyCodes, encodeXML) {
+	function(jQuery, library, Control, Device, PullToRefreshRenderer, KeyCodes, encodeXML, InvisibleText, BusyIndicator) {
 	"use strict";
 
 
@@ -40,7 +42,7 @@ sap.ui.define([
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -83,22 +85,37 @@ sap.ui.define([
 		}
 	}});
 
+	PullToRefresh.ARIA_F5_REFRESH = "PULL_TO_REFRESH_ARIA_F5";
+
 	PullToRefresh.prototype.init = function(){
-		//TODO: global jquery call found
+		// TODO: migration not possible. jQuery.sap.simulateMobileOnDesktop is a testing flag which should not be used.
 		this._bTouchMode = Device.support.touch && !Device.system.combi || jQuery.sap.simulateMobileOnDesktop;
 		this._iState = 0; // 0 - normal; 1 - release to refresh; 2 - loading
+		this._sAriaF5Text = InvisibleText.getStaticId("sap.m", PullToRefresh.ARIA_F5_REFRESH);
 	};
 
 	PullToRefresh.prototype._loadBI = function(){
 		// lazy create a Busy indicator to avoid overhead when invisible at start
 		if (this.getVisible() && !this._oBusyIndicator) {
-			var BusyIndicator = sap.ui.requireSync("sap/m/BusyIndicator");
 			this._oBusyIndicator = new BusyIndicator({
 				size: "1.7rem",
 				design: "auto"
 			});
 			this._oBusyIndicator.setParent(this);
 		}
+	};
+
+	PullToRefresh.prototype._getAriaDescribedByReferences = function(){
+		var sTooltipText = this.getTooltip_AsString(),
+			sDescribedBy = this._sAriaF5Text,
+			sTooltipId;
+
+		if (sTooltipText) {
+			sTooltipId = InvisibleText.getStaticId("sap.m", sTooltipText);
+			sDescribedBy += ' ' + sTooltipId;
+		}
+
+		return sDescribedBy;
 	};
 
 	PullToRefresh.prototype.onBeforeRendering = function(){
@@ -173,7 +190,7 @@ sap.ui.define([
 		if (_scroller.y > -this._iTopTrigger && this._iState < 1 ) {
 			this.setState(1);
 			_scroller.minScrollY = 0;
-		} else if (_scroller.y < -this._iTopTrigger && this._iState == 1) {
+		} else if (_scroller.y < -this._iTopTrigger && this._iState === 1) {
 			this.setState(0);
 			_scroller.minScrollY = -domRef.offsetHeight;
 		}
@@ -192,7 +209,7 @@ sap.ui.define([
 	};
 
 	PullToRefresh.prototype.doScrollEnd = function(){
-		if (this._iState == 1) { // if released when ready - load
+		if (this._iState === 1) { // if released when ready - load
 			this.setState(2);
 			this.fireRefresh();
 		}
@@ -204,7 +221,7 @@ sap.ui.define([
 	*/
 	PullToRefresh.prototype.setState = function(iState){
 
-		if (this._iState == iState) {
+		if (this._iState === iState) {
 			return;
 		}
 
@@ -241,17 +258,6 @@ sap.ui.define([
 	};
 
 	/*
-	* Override re-rendering for description
-	* @private
-	*/
-	PullToRefresh.prototype.setDescription = function(sDescription){
-		if (this._oDomRef) {
-			this.$().find(".sapMPullDownInfo").html(encodeXML(sDescription));
-		}
-		return this.setProperty("description", sDescription, true);
-	};
-
-	/*
 	* Return a private custom icon image control for internal rendering
 	* @private
 	*/
@@ -284,7 +290,7 @@ sap.ui.define([
 	 * @private
 	 */
 	PullToRefresh.prototype.onkeydown = function(event) {
-		if ( event.which == KeyCodes.F5) {
+		if (event.which === KeyCodes.F5) {
 			this.onclick();
 			// do not refresh browser window
 			event.stopPropagation();
@@ -336,7 +342,7 @@ sap.ui.define([
 	};
 
 	PullToRefresh.prototype.setVisible = function(bVisible){
-		if (this.getVisible() == bVisible) {
+		if (this.getVisible() === bVisible) {
 			return this;
 		}
 

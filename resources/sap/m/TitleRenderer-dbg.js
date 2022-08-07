@@ -1,27 +1,27 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides default renderer for control sap.m.Title
-sap.ui.define(["sap/ui/core/library", "sap/m/HyphenationSupport"],
-	function(coreLibrary, HyphenationSupport) {
+sap.ui.define(["sap/ui/core/Renderer", "sap/ui/core/library", "sap/m/HyphenationSupport"],
+	function(Renderer, coreLibrary, HyphenationSupport) {
 	"use strict";
 
-
-	// shortcut for sap.ui.core.TextAlign
-	var TextAlign = coreLibrary.TextAlign;
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
 
 	// shortcut for sap.ui.core.TitleLevel
 	var TitleLevel = coreLibrary.TitleLevel;
-
 
 	/**
 	 * Title renderer.
 	 * @namespace
 	 */
-	var TitleRenderer = {};
+	var TitleRenderer = {
+		apiVersion: 2
+	};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -30,15 +30,18 @@ sap.ui.define(["sap/ui/core/library", "sap/m/HyphenationSupport"],
 	 */
 	TitleRenderer.render = function(oRm, oTitle){
 		var oAssoTitle = oTitle._getTitle(),
-			sLevel = (oAssoTitle ? oAssoTitle.getLevel() : oTitle.getLevel()) || TitleLevel.Auto,
+			oTitleContent = oTitle.getContent(),
+			sLevel = (oAssoTitle && !oTitleContent ? oAssoTitle.getLevel() : oTitle.getLevel()) || TitleLevel.Auto,
 			bAutoLevel = sLevel == TitleLevel.Auto,
-			sTag = bAutoLevel ? "div" : sLevel,
-			sText = HyphenationSupport.getTextForRender(oTitle, "main");
+			sTag = bAutoLevel ? "div" : sLevel.toLowerCase(),
+			sText = !oTitleContent ? HyphenationSupport.getTextForRender(oTitle, "main") : "",
+			sTextDir = oTitle.getTextDirection(),
+			sTextAlign = Renderer.getTextAlign(oTitle.getTextAlign(), sTextDir),
+			sTooltip;
 
-		oRm.openStart(sTag);
-		oRm.controlData(oTitle);
+		oRm.openStart(sTag, oTitle);
 		oRm.class("sapMTitle");
-		oRm.class("sapMTitleStyle" + (oTitle.getTitleStyle() || TitleLevel.Auto));
+		oRm.class("sapMTitleStyle" + oTitle.getTitleStyle());
 		oRm.class(oTitle.getWrapping() ? "sapMTitleWrap" : "sapMTitleNoWrap");
 		oRm.class("sapUiSelectable");
 
@@ -49,33 +52,40 @@ sap.ui.define(["sap/ui/core/library", "sap/m/HyphenationSupport"],
 			oRm.style("width", sWidth);
 		}
 
-		var sTextAlign = oTitle.getTextAlign();
-		if (sTextAlign && sTextAlign != TextAlign.Initial) {
-			oRm.class("sapMTitleAlign" + sTextAlign);
+		if (sTextAlign) {
+			oRm.style("text-align", sTextAlign);
 		}
 
 		if (oTitle.getParent() instanceof sap.m.Toolbar) {
 			oRm.class("sapMTitleTB");
 		}
 
-		var sTooltip = oAssoTitle ? oAssoTitle.getTooltip_AsString() : oTitle.getTooltip_AsString();
+		sTooltip = oAssoTitle && !oTitleContent ? oAssoTitle.getTooltip_AsString() : oTitle.getTooltip_AsString();
 		if (sTooltip) {
 			oRm.attr("title", sTooltip);
 		}
 
 		if (bAutoLevel) {
 			oRm.attr("role", "heading");
+			oRm.attr("aria-level", oTitle._getAriaLevel());
 		}
 
-		HyphenationSupport.writeHyphenationClass(oRm, oTitle);
+		if (!oTitleContent) {
+			HyphenationSupport.writeHyphenationClass(oRm, oTitle);
+		}
 
 		oRm.openEnd();
-		oRm.openStart("span");
-		oRm.attr("id", oTitle.getId() + "-inner");
-		oRm.openEnd();
 
-		oRm.text(sText);
+		oRm.openStart("span", oTitle.getId() + "-inner");
+		oRm.attr("dir", sTextDir !== TextDirection.Inherit ? sTextDir.toLowerCase() : "auto");
+		oRm.openEnd();
+		if (oTitleContent) { // render a control added in the titleControl aggregation ...
+			oRm.renderControl(oTitleContent);
+		} else { // ... or just a text if there is no such control
+			oRm.text(sText);
+		}
 		oRm.close("span");
+
 		oRm.close(sTag);
 	};
 

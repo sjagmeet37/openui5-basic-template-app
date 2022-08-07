@@ -1,32 +1,23 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-
+/*eslint-disable max-len */
 // Provides class sap.ui.model.odata.ODataTreeBindingFlat
 sap.ui.define([
-	'sap/ui/model/Filter',
-	'sap/ui/model/TreeBinding',
-	'sap/ui/model/odata/v2/ODataTreeBinding',
-	'sap/ui/model/ChangeReason',
-	'sap/ui/model/TreeBindingUtils',
-	"sap/base/util/uid",
-	"sap/base/Log",
 	"sap/base/assert",
-	"sap/ui/thirdparty/jquery"
-],
-	function(
-		Filter,
-		TreeBinding,
-		ODataTreeBinding,
-		ChangeReason,
-		TreeBindingUtils,
-		uid,
-		Log,
-		assert,
-		jQuery
-	) {
+	"sap/base/Log",
+	"sap/base/util/extend",
+	"sap/base/util/isEmptyObject",
+	"sap/base/util/uid",
+	"sap/ui/model/ChangeReason",
+	"sap/ui/model/Filter",
+	"sap/ui/model/TreeBinding",
+	"sap/ui/model/TreeBindingUtils",
+	"sap/ui/model/odata/v2/ODataTreeBinding"
+], function(assert, Log, extend, isEmptyObject, uid, ChangeReason, Filter, TreeBinding,
+		TreeBindingUtils, ODataTreeBinding) {
 	"use strict";
 
 	/**
@@ -111,11 +102,44 @@ sap.ui.define([
 	};
 
 	/**
-	 * Retrieves the requested page.
-	 * API used by the controls.
+	 * Gets an array of contexts for the requested part of the tree.
+	 *
+	 * @param {number} [iStartIndex=0]
+	 *   The index of the first requested context
+	 * @param {number} [iLength]
+	 *   The maximum number of returned contexts; if not given the model's size limit is used; see
+	 *   {@link sap.ui.model.Model#setSizeLimit}
+	 * @param {number} [iThreshold=0]
+	 *   The maximum number of contexts to read to read additionally as buffer
+	 * @return {sap.ui.model.Context[]}
+	 *   The requested tree contexts
+	 *
+	 * @protected
 	 */
-	ODataTreeBindingFlat.prototype.getContexts = function (iStartIndex, iLength, iThreshold, bReturnNodes) {
-		if (this.isInitial()) {
+	ODataTreeBindingFlat.prototype.getContexts = function (iStartIndex, iLength, iThreshold) {
+		return this._getContextsOrNodes(false, iStartIndex, iLength, iThreshold);
+	};
+
+	/**
+	 * Gets an array of either node objects or contexts for the requested part of the tree.
+	 *
+	 * @param {boolean} bReturnNodes
+	 *   Whether to return node objects or contexts
+	 * @param {number} [iStartIndex=0]
+	 *   The index of the first requested node or context
+	 * @param {number} [iLength]
+	 *   The maximum number of returned nodes or contexts; if not given the model's size limit is
+	 *   used; see {@link sap.ui.model.Model#setSizeLimit}
+	 * @param {number} [iThreshold=0]
+	 *   The maximum number of nodes or contexts to read additionally as buffer
+	 * @return {object[]|sap.ui.model.Context[]}
+	 *   The requested tree nodes or contexts
+	 *
+	 * @private
+	 */
+	ODataTreeBindingFlat.prototype._getContextsOrNodes = function (bReturnNodes, iStartIndex,
+			iLength, iThreshold) {
+		if (!this.isResolved() || this.isInitial()) {
 			return [];
 		}
 
@@ -279,20 +303,48 @@ sap.ui.define([
 	};
 
 	/**
-	 * Retrieves the requested section of the nodes.
-	 * Also requests the data if necessary.
+	 * Gets an array of nodes for the requested part of the tree.
+	 *
+	 * @param {number} [iStartIndex=0]
+	 *   The index of the first requested node
+	 * @param {number} [iLength]
+	 *   The maximum number of returned nodes; if not given the model's size limit is used; see
+	 *   {@link sap.ui.model.Model#setSizeLimit}
+	 * @param {number} [iThreshold=0]
+	 *   The maximum number of nodes to read additionally as buffer
+	 * @return {Object[]}
+	 *   The requested tree nodes
+	 *
 	 * @protected
 	 */
 	ODataTreeBindingFlat.prototype.getNodes = function (iStartIndex, iLength, iThreshold) {
-		var vNodes = this.getContexts(iStartIndex, iLength, iThreshold, true);
-		return vNodes;
+		return this._getContextsOrNodes(true, iStartIndex, iLength, iThreshold);
 	};
 
 
 
 	/**
-	 * Applies the given function to all tree nodes
-	 * @param {function} fnMap the map function which will be called for all nodes.
+	 * Applies the given callback function to all tree nodes including server-index nodes and deep
+	 * nodes. It iterates all tree nodes unless the property <code>broken</code> of the callback
+	 * function parameter <code>oRecursionBreaker</code> is set to <code>true</code>.
+	 *
+	 * @param {function} fnMap
+	 *   This callback function is called for all nodes of this tree. It has no return value and
+	 *   gets the following parameters:
+	 *   <ul>
+	 *     <li>{object} oNode: The current tree node</li>
+	 *     <li>{object} oRecursionBreaker: An object reference that allows to interrupt calling the
+	 *       callback function with further tree nodes</li>
+	 *     <li>{object} oRecursionBreaker.broken=false: Whether the recursion has to be interrupted
+	 *       when the current <code>oNode</code> has finished processing</li>
+	 *     <li>{string} sIndexType: Describes the node type ("serverIndex" for nodes on the highest
+	 *       hierarchy, "positionInParent" for nodes in subtrees and "newNode" for newly added
+	 *       nodes)</li>
+	 *     <li>{int} [iIndex]: The structured position in the tree accessible with the property
+	 *       described in <code>sIndexType</code></li>
+	 *     <li>{object} [oParent]: The parent node of the current tree node</li>
+	 *   </ul>
+	 *
 	 * @private
 	 */
 	ODataTreeBindingFlat.prototype._map = function (fnMap) {
@@ -477,7 +529,10 @@ sap.ui.define([
 	ODataTreeBindingFlat.prototype._loadData = function (iSkip, iTop, iThreshold) {
 		var that = this;
 
-		this.fireDataRequested();
+		if (!this.bSkipDataEvents) {
+			this.fireDataRequested();
+		}
+		this.bSkipDataEvents = false;
 
 		return this._requestServerIndexNodes(iSkip, iTop, iThreshold).then(function(oResponseData) {
 			that._addServerIndexNodes(oResponseData.oData, oResponseData.iSkip);
@@ -491,8 +546,8 @@ sap.ui.define([
 				that._aNodes = [];
 				that._bLengthFinal = true;
 				that._fireChange({reason: ChangeReason.Change});
+				that.fireDataReceived();
 			}
-			that.fireDataReceived();
 		});
 	};
 
@@ -674,7 +729,7 @@ sap.ui.define([
 			// TODO: Add additional filters to the read call, as soon as back-end implementations support it
 			// Something like this: aFilters = [new sap.ui.model.Filter([hierarchyFilters].concat(this.aFilters))];
 
-			var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext());
+			var sAbsolutePath = this.getResolvedPath();
 			if (sAbsolutePath) {
 				oRequest.oRequestHandle = this.oModel.read(sAbsolutePath, {
 					urlParameters: aUrlParameters,
@@ -738,7 +793,10 @@ sap.ui.define([
 	ODataTreeBindingFlat.prototype._loadChildren = function(oParentNode, iSkip, iTop) {
 		var that = this;
 
-		this.fireDataRequested();
+		if (!this.bSkipDataEvents) {
+			this.fireDataRequested();
+		}
+		this.bSkipDataEvents = false;
 
 		this._requestChildren(oParentNode, iSkip, iTop).then(function(oResponseData) {
 			that._addChildNodes(oResponseData.oData, oParentNode, oResponseData.iSkip);
@@ -754,8 +812,8 @@ sap.ui.define([
 					oParentNode.childCount = 0;
 					that._fireChange({reason: ChangeReason.Change});
 				}
+				that.fireDataReceived();
 			}
-			that.fireDataReceived();
 		});
 	};
 
@@ -966,7 +1024,7 @@ sap.ui.define([
 
 			// TODO: Add additional filters to the read call, as soon as back-end implementations support it
 			// Something like this: aFilters = [new sap.ui.model.Filter([hierarchyFilters].concat(this.aFilters))];
-			var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext());
+			var sAbsolutePath = this.getResolvedPath();
 			if (sAbsolutePath) {
 				oRequest.oRequestHandle = this.oModel.read(sAbsolutePath, {
 					urlParameters: aUrlParameters,
@@ -1032,13 +1090,20 @@ sap.ui.define([
 		}
 
 		return missingSectionsLoaded.then(function () {
-			that.fireDataRequested();
+			if (!that.bSkipDataEvents) {
+				that.fireDataRequested();
+			}
+			that.bSkipDataEvents = false;
 			return that._requestSubTree(oParentNode, iLevel).then(function(oResponseData) {
 				that._addSubTree(oResponseData.oData, oParentNode);
 				that.fireDataReceived({data: oResponseData.oData});
 			}, function(oError) {
 				Log.warning("ODataTreeBindingFlat: Error during subtree request", oError.message);
-				that.fireDataReceived();
+
+				var bAborted = oError.statusCode === 0;
+				if (!bAborted) {
+					that.fireDataReceived();
+				}
 			});
 		});
 	};
@@ -1195,7 +1260,7 @@ sap.ui.define([
 				aFilters = aFilters.concat(this.aApplicationFilters);
 			}
 
-			var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext());
+			var sAbsolutePath = this.getResolvedPath();
 			if (sAbsolutePath) {
 				oRequest.oRequestHandle = this.oModel.read(sAbsolutePath, {
 					urlParameters: aUrlParameters,
@@ -1336,7 +1401,7 @@ sap.ui.define([
 
 		//trigger loading of the node if it is deeper than our initial level expansion
 		if (oToggledNode.initiallyCollapsed && oToggledNode.childCount == undefined) {
-			this._loadChildren(oToggledNode, 0, this._iPageSize);
+			this._loadChildren(oToggledNode, 0, this._iPageSize + this._iThreshold);
 		} else {
 			this._propagateMagnitudeChange(oToggledNode.parent, oToggledNode.magnitude);
 		}
@@ -1454,17 +1519,36 @@ sap.ui.define([
 	 * @param {int} iLevel the number of expanded levels
 	 */
 	ODataTreeBindingFlat.prototype.collapseToLevel = function (iLevel) {
+		var iOldLeadIndex = -1,
+			aChangedIndices = [],
+			iRowIndex;
+
 		if (this.bCollapseRecursive) {
 			// first remove selection up to the given level
 			for (var sKey in this._mSelected) {
 				var oSelectedNode = this._mSelected[sKey];
 				if (oSelectedNode.level > iLevel) {
+					iRowIndex = this.getRowIndexByNode(oSelectedNode);
+					aChangedIndices.push(iRowIndex);
+					// find old lead selection index
+					if (this._sLeadSelectionKey == sKey) {
+						iOldLeadIndex = iRowIndex;
+					}
+
 					this.setNodeSelection(oSelectedNode, false);
 				}
 			}
 		}
 
 		this.setNumberOfExpandedLevels(iLevel);
+
+		if (this.bCollapseRecursive && aChangedIndices.length) {
+			this._publishSelectionChanges({
+				rowIndices: aChangedIndices,
+				oldIndex: iOldLeadIndex,
+				leadIndex: -1
+			});
+		}
 	};
 
 	/**
@@ -1510,6 +1594,13 @@ sap.ui.define([
 				this.setNodeSelection(oSelectedNode, false);
 			}
 		}.bind(this));
+
+		if ((this.bCollapseRecursive || bForceDeselect) && aInvisibleNodes.length) {
+			this._publishSelectionChanges({
+				rowIndices: [],
+				indexChangesCouldNotBeDetermined: true
+			});
+		}
 	};
 
 	/**
@@ -1730,7 +1821,7 @@ sap.ui.define([
 						var iVisibilityFactor = (aCheckMatrix[bVisible | 0][bVisibleNewParent | 0]);
 						// iVisibilityFactor is either 0, 1 or -1.
 						// 1 and -1 are the relevant factors here, otherwise the node is not visible
-						if (!!iVisibilityFactor) {
+						if (iVisibilityFactor) {
 							if (oNode.isDeepOne) {
 								iDelta += iVisibilityFactor * 1;
 							} else {
@@ -1828,6 +1919,22 @@ sap.ui.define([
 	 */
 	ODataTreeBindingFlat.prototype.nodeHasChildren = function (oNode) {
 		return !(oNode && oNode.nodeState.isLeaf);
+	};
+
+	/**
+	 * @see sap.ui.model.odata.v2.ODataTreeBinding
+	 */
+	ODataTreeBindingFlat.prototype._hasChangedEntity = function (mChangedEntities) {
+		var bChangeDetected = false;
+
+		this._map(function (oNode, oRecursionBreaker) {
+			if (oNode.key in mChangedEntities) {
+				bChangeDetected = true;
+				oRecursionBreaker.broken = true;
+			}
+		});
+
+		return bChangeDetected;
 	};
 
 	//*************************************************
@@ -1999,7 +2106,7 @@ sap.ui.define([
 
 	ODataTreeBindingFlat.prototype._indexGetSelectedIndex = function () {
 		//if we have no nodes selected, the lead selection index is -1
-		if (!this._sLeadSelectionKey || jQuery.isEmptyObject(this._mSelected)) {
+		if (!this._sLeadSelectionKey || isEmptyObject(this._mSelected)) {
 			return -1;
 		}
 
@@ -2014,7 +2121,7 @@ sap.ui.define([
 
 	ODataTreeBindingFlat.prototype._mapGetSelectedIndex = function () {
 		//if we have no nodes selected, the lead selection index is -1
-		if (!this._sLeadSelectionKey || jQuery.isEmptyObject(this._mSelected)) {
+		if (!this._sLeadSelectionKey || isEmptyObject(this._mSelected)) {
 			return -1;
 		}
 
@@ -2053,7 +2160,7 @@ sap.ui.define([
 		var aResultIndices = [];
 
 		//if we have no nodes selected, the selection indices are empty
-		if (jQuery.isEmptyObject(this._mSelected)) {
+		if (isEmptyObject(this._mSelected)) {
 			return aResultIndices;
 		}
 
@@ -2211,7 +2318,7 @@ sap.ui.define([
 		var aResultContexts = [];
 
 		//if we have no nodes selected, the selection indices are empty
-		if (jQuery.isEmptyObject(this._mSelected)) {
+		if (isEmptyObject(this._mSelected)) {
 			return aResultContexts;
 		}
 
@@ -2550,7 +2657,8 @@ sap.ui.define([
 		}
 
 		//only fire event if the selection actually changed somehow
-		if (mParams.rowIndices.length > 0 || (mParams.leadIndex != undefined && mParams.leadIndex !== -1)) {
+		if (mParams.rowIndices.length > 0 || (mParams.leadIndex != undefined && mParams.leadIndex !== -1) ||
+				mParams.indexChangesCouldNotBeDetermined) {
 			this.fireSelectionChanged(mParams);
 		}
 	};
@@ -2638,7 +2746,7 @@ sap.ui.define([
 	 */
 	ODataTreeBindingFlat.prototype._getCorrectChangeGroup = function (sKey) {
 		if (!sKey) {
-			sKey = this.oModel.resolve(this.getPath(), this.getContext());
+			sKey = this.getResolvedPath();
 		}
 		return this.oModel._resolveGroup(sKey).groupId;
 	};
@@ -2647,7 +2755,7 @@ sap.ui.define([
 	 * Creates a new entry, which can be added to this binding instance via addContexts(...).
 	 */
 	ODataTreeBindingFlat.prototype.createEntry = function (mParameters) {
-		var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext());
+		var sAbsolutePath = this.getResolvedPath();
 		var oNewEntry;
 
 		if (sAbsolutePath) {
@@ -2670,7 +2778,7 @@ sap.ui.define([
 		mParameters = mParameters || {};
 
 		// group id
-		var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext()),
+		var sAbsolutePath = this.getResolvedPath(),
 			oOptimizedChanges = this._optimizeChanges();
 
 		if (!sAbsolutePath) {
@@ -2829,7 +2937,7 @@ sap.ui.define([
 			this.oTreeProperties["hierarchy-level-for"], "LE", this.getNumberOfExpandedLevels()
 		));
 
-		mUrlParameters = jQuery.extend({}, this.mParameters);
+		mUrlParameters = extend({}, this.mParameters);
 		mUrlParameters.select =  sKeySelect +
 									"," + this.oTreeProperties["hierarchy-node-for"] +
 									"," + this.oTreeProperties["hierarchy-node-descendant-count-for"] +
@@ -2837,7 +2945,7 @@ sap.ui.define([
 									"," + this.oTreeProperties["hierarchy-preorder-rank-for"];
 
 		// request the magnitude and preorder
-		var sAbsolutePath = this.oModel.resolve(this.getPath(), this.getContext());
+		var sAbsolutePath = this.getResolvedPath();
 		if (sAbsolutePath) {
 			this.oModel.read(sAbsolutePath, {
 				urlParameters: this.oModel.createCustomParams(mUrlParameters),
@@ -2873,7 +2981,7 @@ sap.ui.define([
 		));
 		*/
 
-		mUrlParameters = jQuery.extend({}, this.mParameters);
+		mUrlParameters = extend({}, this.mParameters);
 		mUrlParameters.select =  this.oTreeProperties["hierarchy-sibling-rank-for"];
 
 		// request the siblings position for moved nodes only as siblings position are already available for added nodes
@@ -3142,7 +3250,10 @@ sap.ui.define([
 			moved: []
 		};
 
-		this.fireDataRequested();
+		if (!this.bSkipDataEvents) {
+			this.fireDataRequested();
+		}
+		this.bSkipDataEvents = false;
 
 		// Restore tree state is done in the following steps:
 		// 1. Request preorder position for added nodes (if there's added node) _requestExtraInfoForAddedNodes
@@ -3151,7 +3262,7 @@ sap.ui.define([
 			if (bNoAbort) {
 				return that._executeRestoreTreeState(oOptimizedChanges).then(function(aData) {
 					if (aData) {
-						that._fireRefresh({reason: ChangeReason.Refresh});
+						that._fireChange({reason: ChangeReason.Change});
 						that.fireDataReceived({data: aData});
 						return aData;
 					}
@@ -3791,7 +3902,7 @@ sap.ui.define([
 		if (oContext) {
 			// set unique node ID if the context was created and we did not assign an ID yet
 			var sNewlyGeneratedID = oContext.getProperty(this.oTreeProperties["hierarchy-node-for"]);
-			if (oContext.bCreated && !sNewlyGeneratedID) {
+			if (oContext.isTransient() && !sNewlyGeneratedID) {
 				this.oModel.setProperty(this.oTreeProperties["hierarchy-node-for"], uid(), oContext);
 			}
 		}
@@ -4028,7 +4139,7 @@ sap.ui.define([
 		var aNodesInfo = [];
 
 		//if we have no nodes selected, the selection info are empty
-		if (jQuery.isEmptyObject(this._mSelected)) {
+		if (isEmptyObject(this._mSelected)) {
 			return aNodesInfo;
 		}
 
@@ -4182,19 +4293,20 @@ sap.ui.define([
 	* Abort all pending requests
 	*/
 	ODataTreeBindingFlat.prototype._abortPendingRequest = function() {
-		ODataTreeBinding.prototype._abortPendingRequest.apply(this, arguments);
+		if (this._aPendingRequests.length || this._aPendingChildrenRequests.length) {
+			this.bSkipDataEvents = true;
 
-		var i, j;
+			var i, j;
+			for (i = this._aPendingRequests.length - 1; i >= 0; i--) {
+				this._aPendingRequests[i].oRequestHandle.abort();
+			}
+			this._aPendingRequests = [];
 
-		for (i = this._aPendingRequests.length - 1; i >= 0; i--) {
-			this._aPendingRequests[i].oRequestHandle.abort();
+			for (j = this._aPendingChildrenRequests.length - 1; j >= 0; j--) {
+				this._aPendingChildrenRequests[j].oRequestHandle.abort();
+			}
+			this._aPendingChildrenRequests = [];
 		}
-		this._aPendingRequests = [];
-
-		for (j = this._aPendingChildrenRequests.length - 1; j >= 0; j--) {
-			this._aPendingChildrenRequests[j].oRequestHandle.abort();
-		}
-		this._aPendingChildrenRequests = [];
 	};
 
 	//*********************************************
@@ -4202,18 +4314,33 @@ sap.ui.define([
 	//*********************************************
 
 	/**
-	 * Attach event-handler <code>fnFunction</code> to the 'selectionChanged' event of this <code>sap.ui.model.SelectionModel</code>.<br/>
+	 * The <code>selectionChanged</code> event is fired whenever the selection of tree nodes changes in any way.
+	 *
+	 * @name sap.ui.model.odata.ODataTreeBindingFlat#selectionChanged
+	 * @event
+	 * @param {sap.ui.base.Event} oEvent
+	 * @public
+	 */
+
+	/**
+	 * Attaches event handler <code>fnFunction</code> to the {@link #event:selectionChanged selectionChanged} event of
+	 * this <code>sap.ui.model.odata.ODataTreeBindingFlat</code>.
+	 *
+	 * When called, the context of the event handler (its <code>this</code>) will be bound to <code>oListener</code>
+	 * if specified, otherwise it will be bound to this <code>sap.ui.model.odata.ODataTreeBindingFlat</code> itself.
+	 *
 	 * Event is fired if the selection of tree nodes is changed in any way.
 	 *
 	 * @param {object}
-	 *            [oData] The object, that should be passed along with the event-object when firing the event.
+	 *            [oData] An application-specific payload object that will be passed to the event handler
+	 *            along with the event object when firing the event
 	 * @param {function}
-	 *            fnFunction The function to call, when the event occurs. This function will be called on the
-	 *            oListener-instance (if present) or in a 'static way'.
+	 *            fnFunction The function to be called, when the event occurs
 	 * @param {object}
-	 *            [oListener] Object on which to call the given function. If empty, this binding adapter is used.
+	 *            [oListener] Context object to call the event handler with. Defaults to this
+	 *            <code>sap.ui.model.odata.ODataTreeBindingFlat</code> itself
 	 *
-	 * @return {sap.ui.model.SelectionModel} <code>this</code> to allow method chaining
+	 * @returns {this} Reference to <code>this</code> in order to allow method chaining
 	 * @protected
 	 */
 	ODataTreeBindingFlat.prototype.attachSelectionChanged = function(oData, fnFunction, oListener) {
@@ -4222,15 +4349,16 @@ sap.ui.define([
 	};
 
 	/**
-	 * Detach event-handler <code>fnFunction</code> from the 'selectionChanged' event of this <code>sap.ui.model.SelectionModel</code>.<br/>
+	 * Detaches event handler <code>fnFunction</code> from the {@link #event:selectionChanged selectionChanged} event of
+	 * this <code>sap.ui.model.odata.ODataTreeBindingFlat</code>.
 	 *
-	 * The passed function and listener object must match the ones previously used for event registration.
+	 * The passed function and listener object must match the ones used for event registration.
 	 *
 	 * @param {function}
-	 *            fnFunction The function to call, when the event occurs.
+	 *            fnFunction The function to be called, when the event occurs
 	 * @param {object}
-	 *            oListener Object on which the given function had to be called.
-	 * @return {sap.ui.model.SelectionModel} <code>this</code> to allow method chaining
+	 *            [oListener] Context object on which the given function had to be called
+	 * @returns {this} Reference to <code>this</code> in order to allow method chaining
 	 * @protected
 	 */
 	ODataTreeBindingFlat.prototype.detachSelectionChanged = function(fnFunction, oListener) {
@@ -4239,22 +4367,25 @@ sap.ui.define([
 	};
 
 	/**
-	 * Fire event 'selectionChanged' to attached listeners.
+	 * Fires event {@link #event:selectionChanged selectionChanged} to attached listeners.
 	 *
 	 * Expects following event parameters:
 	 * <ul>
 	 * <li>'leadIndex' of type <code>int</code> Lead selection index.</li>
 	 * <li>'rowIndices' of type <code>int[]</code> Other selected indices (if available)</li>
+	 * <li>'indexChangesCouldNotBeDetermined' of type <code>boolean</code> True in case changed indices could not be determined</li>
 	 * </ul>
 	 *
-	 * @param {object} mArguments the arguments to pass along with the event.
-	 * @param {int} mArguments.leadIndex Lead selection index
-	 * @param {int[]} [mArguments.rowIndices] Other selected indices (if available)
-	 * @return {sap.ui.model.SelectionModel} <code>this</code> to allow method chaining
+	 * @param {object} oParameters Parameters to pass along with the event.
+	 * @param {int} oParameters.leadIndex Lead selection index
+	 * @param {int[]} [oParameters.rowIndices] Other selected indices (if available)
+	 * @param {boolean} [oParameters.indexChangesCouldNotBeDetermined]
+	 *						True in case changed indices could not be determined
+	 * @return {this} Reference to <code>this</code> in order to allow method chaining
 	 * @protected
 	 */
-	ODataTreeBindingFlat.prototype.fireSelectionChanged = function(mArguments) {
-		this.fireEvent("selectionChanged", mArguments);
+	ODataTreeBindingFlat.prototype.fireSelectionChanged = function(oParameters) {
+		this.fireEvent("selectionChanged", oParameters);
 		return this;
 	};
 

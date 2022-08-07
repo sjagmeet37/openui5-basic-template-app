@@ -6,7 +6,7 @@
 .sapMNwC {
 	display: inline-block;
 	outline: none;
-	width: 20.5rem;
+	width: 100%;
 	height: 3.5625rem;
 	color: @sapUiTileTextColor;
 	background-color: @sapUiTileBackground;
@@ -31,6 +31,39 @@
 	}
 }
 
+.Stretch .sapMNwCCTxt {
+	max-width: none;
+	display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: bold;
+}
+
+.Stretch{
+	.sapMTileCnt.News .sapMNwC{
+		.sapMNwCCTxt .sapMText {
+			font-size: @sapMFontLargeSize;
+			color: @sapUiText;
+		}
+		.sapMNwCCTxt .sapMFT {
+			font-size: 0.938rem;
+			color: @sapUiText;
+		}
+		.sapMNwCSbh{
+			color: @sapUiText;
+			max-width: none;
+			padding-top: 0.25rem;
+
+			.sapMFT{
+				word-wrap: break-word;
+				white-space: normal;
+				height: 2rem;
+			}
+		}
+	}
+}
+
 .sapMNwCSbh {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -38,15 +71,18 @@
 	font-family: @sapUiFontFamily;
 	font-weight: normal;
 	max-width: 20.5rem;
+	width: 100%;
 	display: inline-block;
 	line-height: 1.1875rem;
 	color: @sapUiTileTextColor;
 	font-size: @sapMFontMediumSize;
 }
 
-.sapMNwCCTxt .sapMText {
+.sapMNwCCTxt .sapMText, .sapMNwCCTxt .sapMFT {
 	font-size: @sapMFontMediumSize;
 	color: @sapUiContentContrastTextColor;
+	overflow-wrap: break-word;
+	white-space: pre-line;
 }
 
 .sapMNwC:focus:not([tabindex]) {
@@ -55,7 +91,6 @@
 
 .sapMTileSmallPhone {
 	.sapMNwC {
-		width: 17.75rem;
 		height: 3.188rem;
 	}
 
@@ -74,5 +109,17 @@
 
 	.sapMNwCCTxt .sapMText, .sapMNwCSbh {
 		font-size: @sapMFontSmallSize;
+	}
+
+	.sapMTileSmallPhone.Stretch {
+		.sapMNwCSbh {
+			padding-top: 0.5rem;
+		}
+		.sapMNwCSbh > .sapMFT {
+			white-space: nowrap;
+			width: 11.063rem;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
 	}
 }

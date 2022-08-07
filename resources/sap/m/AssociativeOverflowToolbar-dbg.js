@@ -1,12 +1,12 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.AssociativeOverflowToolbar.
-sap.ui.define(['sap/base/Log', './OverflowToolbar', './OverflowToolbarRenderer', './Toolbar', 'sap/ui/Device'],
-	function (Log, OverflowToolbar, OverflowToolbarRenderer, Toolbar, Device) {
+sap.ui.define(['sap/base/Log', './OverflowToolbar', './OverflowToolbarRenderer', 'sap/ui/Device'],
+	function (Log, OverflowToolbar, OverflowToolbarRenderer, Device) {
 		"use strict";
 
 		/**
@@ -20,7 +20,7 @@ sap.ui.define(['sap/base/Log', './OverflowToolbar', './OverflowToolbarRenderer',
 		 * @extends sap.m.OverflowToolbar
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @private
@@ -41,9 +41,16 @@ sap.ui.define(['sap/base/Log', './OverflowToolbar', './OverflowToolbarRenderer',
 
 		AssociativeOverflowToolbar.prototype.getContent = function () {
 			var associativeArrayWithIds = this.getAssociation("content") || [];
-			return associativeArrayWithIds.map(function (controlId) {
-				return sap.ui.getCore().byId(controlId);
+			var aControls = [];
+
+			associativeArrayWithIds.forEach(function (controlId) {
+				var oControl = sap.ui.getCore().byId(controlId);
+				if (oControl) {
+					aControls.push(oControl);
+				}
 			});
+
+			return aControls;
 		};
 
 		AssociativeOverflowToolbar.prototype.insertContent = function (oControl, iIndex) {
@@ -117,7 +124,7 @@ sap.ui.define(['sap/base/Log', './OverflowToolbar', './OverflowToolbarRenderer',
 						return sap.ui.getCore().byId(controlId);
 					});
 				default:
-					return Toolbar.prototype[sFuncName].apply(this, aArguments);
+					return OverflowToolbar.prototype._callToolbarMethod.call(this, sFuncName, aArguments);
 			}
 		};
 

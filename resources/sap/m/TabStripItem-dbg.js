@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 // Provides control sap.m.TabStripItem.
@@ -25,7 +25,7 @@ sap.ui.define(["./library", "sap/ui/core/Item", "sap/ui/base/ManagedObject", "sa
 		 * @extends sap.ui.core.Item
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @private
@@ -142,6 +142,13 @@ sap.ui.define(["./library", "sap/ui/core/Item", "sap/ui/base/ManagedObject", "sa
 		TabStripItem.CSS_CLASS_LABEL = "sapMTabStripItemLabel";
 
 		/**
+		 * The default CSS class name of the <code>TabStripItem</code>'s modified symbol in context of <code>TabStrip</code>.
+		 *
+		 * @type {string}
+		 */
+		TabStripItem.CSS_CLASS_MODIFIED_SYMBOL = "sapMTabStripItemModifiedSymbol";
+
+		/**
 		 * The default CSS class name of the <code>TabStripItem</code>'s additional text in context of <code>TabStrip</code>.
 		 *
 		 * @type {string}
@@ -206,6 +213,7 @@ sap.ui.define(["./library", "sap/ui/core/Item", "sap/ui/base/ManagedObject", "sa
 			var oButton = new AccButton({
 				type: ButtonType.Transparent,
 				icon: IconPool.getIconURI("decline"),
+				tooltip: sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("TABSTRIP_ITEM_CLOSE_BTN"),
 				tabIndex: "-1",
 				ariaHidden: "true"
 			}).addStyleClass(TabStripItem.CSS_CLASS_CLOSE_BUTTON);
@@ -246,7 +254,7 @@ sap.ui.define(["./library", "sap/ui/core/Item", "sap/ui/base/ManagedObject", "sa
 		 * Property setter for the icon
 		 *
 		 * @param {sap.ui.core.URI} sIcon - new value of the Icon property
-		 * @return {sap.m.TabStripItem} this to allow method chaining
+		 * @return {this} this to allow method chaining
 		 * @public
 		 */
 		TabStripItem.prototype.setIcon = function(sIcon) {
@@ -285,7 +293,7 @@ sap.ui.define(["./library", "sap/ui/core/Item", "sap/ui/base/ManagedObject", "sa
 		/**
 		 * Function is called when image control needs to be loaded.
 		 *
-		 * @return {sap.m.TabStripItem} this to allow method chaining
+		 * @returns {sap.ui.core.Control} the aggregated image
 		 * @private
 		 */
 		TabStripItem.prototype._getImage = function () {

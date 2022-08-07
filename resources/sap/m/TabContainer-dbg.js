@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -9,13 +9,21 @@ sap.ui.define([
 	'./library',
 	'sap/ui/core/Control',
 	'sap/ui/core/IconPool',
-	'./TabContainerRenderer'
+	'sap/ui/core/util/ResponsivePaddingsEnablement',
+	'./TabContainerRenderer',
+	'./TabStrip',
+	'./TabStripItem',
+	'./Button',
+	'sap/ui/Device'
 ],
-	function(library, Control, IconPool, TabContainerRenderer) {
+	function(library, Control, IconPool, ResponsivePaddingsEnablement, TabContainerRenderer, TabStrip, TabStripItem, Button, Device) {
 		"use strict";
 
 		// shortcut for sap.m.ButtonType
 		var ButtonType = library.ButtonType;
+
+		// shortcut for PageBackgroundDesign in sap.m library
+		var PageBackgroundDesign = library.PageBackgroundDesign;
 
 		/**
 		 * Constructor for a new <code>TabContainer</code>.
@@ -51,10 +59,14 @@ sap.ui.define([
 		 * The <code>TabContainer</code> is a full-page container that takes 100% of its parent width and height.
 		 * As the control is expected to occupy the whole parent, it should be the only child of its parent.
 		 *
+		 * When using the <code>sap.m.TabContainer</code> in SAP Quartz theme, the breakpoints and layout paddings could be determined by the container's width.
+		 * To enable this concept and add responsive padding to the <code>TabContainer</code> control, you may add the following class:
+		 * <code>sapUiResponsivePadding--header</code>.
+		 *
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @public
@@ -70,7 +82,14 @@ sap.ui.define([
 					/**
 					 * Defines whether an <i>Add New Tab</i> button is displayed in the <code>TabStrip</code>.
 					 */
-					showAddNewButton : {type : "boolean", group : "Misc", defaultValue : false}
+					showAddNewButton : {type : "boolean", group : "Misc", defaultValue : false},
+
+					/**
+					 * Determines the background color of the content in <code>TabContainer</code>.
+					 *
+					 * @since 1.71
+					 */
+					backgroundDesign : {type: "sap.m.PageBackgroundDesign", group: "Appearance", defaultValue: PageBackgroundDesign.List}
 				},
 				aggregations : {
 
@@ -150,7 +169,7 @@ sap.ui.define([
 				}
 
 				Control.prototype.constructor.apply(this, arguments);
-				var oControl = new sap.m.TabStrip(this.getId() + "--tabstrip", {
+				var oControl = new TabStrip(this.getId() + "--tabstrip", {
 					hasSelect: true,
 					itemSelect: function(oEvent) {
 						var oItem = oEvent.getParameter("item"),
@@ -163,8 +182,10 @@ sap.ui.define([
 
 						// prevent the tabstrip from closing the item by default
 						oEvent.preventDefault();
-						if (this.fireItemClose({item: oRemovedItem})) {
-							this.removeItem(oRemovedItem); // the tabstrip item will also get removed
+						if (this.fireItemClose({ item: oRemovedItem })) {
+							if (!this.getBinding("items")) {
+								this.removeItem(oRemovedItem); // the tabstrip item will also get removed
+							}
 						}
 
 					}.bind(this)
@@ -181,6 +202,7 @@ sap.ui.define([
 					this.addItem(oItem);
 				}, this);
 
+				this.data("sap-ui-fastnavgroup", "true", true);
 			}
 		});
 
@@ -192,6 +214,17 @@ sap.ui.define([
 			"icon": "icon",
 			"iconTooltip": "iconTooltip",
 			"modified": "modified"
+		};
+
+		ResponsivePaddingsEnablement.call(TabContainer.prototype, {
+			header: {selector: ".sapMTabStripContainer"}
+		});
+
+		/**
+		 * Called when control is initialized.
+		 */
+		TabContainer.prototype.init = function () {
+			this._initResponsivePaddingsEnablement();
 		};
 
 		/**
@@ -216,7 +249,7 @@ sap.ui.define([
 			var oRb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
 			if (!oControl) {
-				oControl = new sap.m.Button({
+				oControl = new Button({
 					type: ButtonType.Transparent,
 					tooltip: oRb.getText("TABCONTAINER_ADD_NEW_TAB"),
 					icon: IconPool.getIconURI("add"),
@@ -332,7 +365,8 @@ sap.ui.define([
 						if (this._getTabStrip()._oItemNavigation) {
 							this._getTabStrip()._oItemNavigation.focusItem(iNextIndex);
 						}
-					};
+					},
+					aActiveElementClasses = document.activeElement.classList;
 
 			// Selection (causes invalidation)
 			if (bSetAsSelected) {
@@ -341,7 +375,8 @@ sap.ui.define([
 				this.fireItemSelect({item: oNextItem});
 			}
 			// Focus (force to wait until invalidated)
-			if (document.activeElement.classList.contains('sapMTabStripSelectListItemCloseBtn')) {
+			if (aActiveElementClasses.contains('sapMTabStripSelectListItemCloseBtn')
+				|| aActiveElementClasses.contains('sapMTabStripItem')) {
 				setTimeout(fnFocusCallback.bind(this), 0);
 			}
 		};
@@ -368,7 +403,8 @@ sap.ui.define([
 		 * @public
 		 */
 		TabContainer.prototype.removeItem = function(vItem) {
-			var bIsSelected;
+			var oTabStrip = this._getTabStrip(),
+				bIsSelected, oTab;
 
 			if (typeof vItem === "undefined" || vItem === null) {
 				return null;
@@ -376,9 +412,16 @@ sap.ui.define([
 
 			//Remove the corresponding TabContainerItem
 			vItem = this.removeAggregation("items", vItem);
+
 			// The selection flag of the removed item
 			bIsSelected = vItem.getId() === this.getSelectedItem();
-			this._getTabStrip().removeItem(this._toTabStripItem(vItem));
+
+			oTab = this._toTabStripItem(vItem);
+			if (oTab.getId() === oTabStrip.getSelectedItem()) {
+				oTabStrip.removeAllAssociation("selectedItem", true);
+			}
+			oTabStrip.removeItem(oTab);
+
 			// Perform selection switch
 			this._moveToNextItem(bIsSelected);
 
@@ -422,31 +465,32 @@ sap.ui.define([
 		 * Adds a new <code>TabContainerItem</code> to the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
 		 * @param {sap.m.TabContainerItem} oItem The new <code>TabContainerItem</code> to be added
-		 * @returns {sap.m.TabContainerItem} The newly added <code>TabContainerItem</code>
+		 * @returns {this} This <code>TabContainer</code> to allow method chaining
 		 * @override
 		 */
 		TabContainer.prototype.addItem = function(oItem) {
 			this.addAggregation("items", oItem, false);
 
 			this._getTabStrip().addItem(
-				new sap.m.TabStripItem({
+				new TabStripItem({
 					key: oItem.getId(),
 					text: oItem.getName(),
 					additionalText: oItem.getAdditionalText(),
 					icon: oItem.getIcon(),
 					iconTooltip: oItem.getIconTooltip(),
 					modified: oItem.getModified(),
-					tooltip: oItem.getTooltip()
+					tooltip: oItem.getTooltip(),
+					customData: oItem.getCustomData()
 				})
 			);
 
-			return oItem;
+			return this;
 		};
 
 		/*
 		 * Destroys all <code>TabContainerItem</code> entities from the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
-		 * @returns {sap.m.TabContainer} This instance for chaining
+		 * @returns {this} This instance for chaining
 		 * @override
 		 */
 		TabContainer.prototype.destroyItems = function() {
@@ -461,19 +505,20 @@ sap.ui.define([
 		 *
 		 * @param {sap.m.TabContainerItem} oItem The new <code>TabContainerItem</code> to be inserted
 		 * @param {int} iIndex The index where the passed <code>TabContainerItem</code> to be inserted
-		 * @returns {sap.m.TabContainer} This instance for chaining
+		 * @returns {this} This instance for chaining
 		 * @override
 		 */
 		TabContainer.prototype.insertItem = function(oItem, iIndex) {
 			this._getTabStrip().insertItem(
-				new sap.m.TabStripItem({
+				new TabStripItem({
 					key: oItem.getId(),
 					text: oItem.getName(),
 					additionalText: oItem.getAdditionalText(),
 					icon: oItem.getIcon(),
 					iconTooltip: oItem.getIconTooltip(),
 					modified: oItem.getModified(),
-					tooltip: oItem.getTooltip()
+					tooltip: oItem.getTooltip(),
+					customData: oItem.getCustomData()
 				}),
 				iIndex
 			);
@@ -484,7 +529,7 @@ sap.ui.define([
 		/*
 		 * Removes all <code>TabContainerItem</code> entities from the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
-		 * @returns {sap.m.TabContainer} This instance for chaining
+		 * @returns {sap.m.TabContainerItem[]} The removed items
 		 * @override
 		 */
 		TabContainer.prototype.removeAllItems = function() {
@@ -499,7 +544,7 @@ sap.ui.define([
 		 * Overrides the <code>addButton</code> property setter to proxy to the <code>TabStrip</code>.
 		 *
 		 * @param {sap.ui.core.Control} oButton The new control to be set as <code>TabStrip</code> <code>addButton</code> aggregation
-		 * @returns {sap.m.TabContainer} This instance for chaining
+		 * @returns {this} This instance for chaining
 		 * @override
 		 */
 		TabContainer.prototype.setAddButton = function (oButton) {
@@ -520,16 +565,21 @@ sap.ui.define([
 		 * Override <code>showAddNewButton</code> property setter to proxy to the <code>TabStrip</code>.
 		 *
 		 * @param {boolean} bShowButton Whether to show the <code>addNewButton</code>
-		 * @returns {sap.m.TabContainer} <code>this</code> pointer for chaining
+		 * @returns {this} <code>this</code> pointer for chaining
 		 * @override
 		 */
 		TabContainer.prototype.setShowAddNewButton = function (bShowButton) {
 			this.setProperty("showAddNewButton", bShowButton, true);
 
+			if (Device.system.phone) {
+				bShowButton ? this.addStyleClass("sapUiShowAddNewButton") : this.removeStyleClass("sapUiShowAddNewButton");
+			}
+
 			var oTabStrip = this._getTabStrip();
 			if (oTabStrip) {
 				oTabStrip.setAddButton(bShowButton ? this._getAddNewTabButton() : null);
 			}
+
 			return this;
 		};
 
@@ -538,7 +588,7 @@ sap.ui.define([
 		 *
 		 * @param {sap.m.TabContainerItem} oSelectedItem The new <code>TabContainerItem</code> to be selected
 		 * @param {jQuery.Event} oEvent  Event object that may be present when the selection change is bubbling
-		 * @returns {sap.m.TabContainer} <code>this</code> pointer for chaining
+		 * @returns {this} <code>this</code> pointer for chaining
 		 * @override
 		 */
 		TabContainer.prototype.setSelectedItem = function (oSelectedItem, oEvent) {
@@ -550,7 +600,7 @@ sap.ui.define([
 					oTabStrip.setSelectedItem(this._toTabStripItem(oSelectedItem));
 					this._rerenderContent(oSelectedItem.getContent());
 				}
-				TabContainer.prototype.setAssociation.call(this, "selectedItem", oSelectedItem, true); //render manually;
+				this.setAssociation("selectedItem", oSelectedItem, true); //render manually;
 				return this;
 			}
 			if (oEvent) {

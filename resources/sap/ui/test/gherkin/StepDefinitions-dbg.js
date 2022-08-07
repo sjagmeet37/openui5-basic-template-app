@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -8,15 +8,15 @@ sap.ui.define(["sap/ui/base/Object", "sap/ui/thirdparty/jquery"], function(BaseO
   "use strict";
 
   /**
-   * A Gherkin feature file is human-readable, and the computer does not know how to execute its steps. This
-   * StepDefinitions class provides the interface between human and machine. It defines what each step in the Gherkin
-   * feature file will actually do when it is executed.
-   *
    * Meant to be implemented/overridden by a child object. Specifically, the functions "init" and "closeApplication"
    * need to be overridden.
    *
    * @abstract
    * @class
+   * Provides the interface between human and machine since a Gherkin feature file is human-readable
+   * and the computer does not know how to execute its steps.
+   *
+   * It defines what each step in the Gherkin feature file will actually do when it is executed.
    * @author Rodrigo Jordao
    * @author Jonathan Benn
    * @extends sap.ui.base.Object
@@ -84,10 +84,10 @@ sap.ui.define(["sap/ui/base/Object", "sap/ui/thirdparty/jquery"], function(BaseO
          * @static
          */
         register : function(rRegex, fnFunc) {
-          if (jQueryDOM.type(rRegex) !== "regexp") {
+          if (!(rRegex instanceof RegExp)) {
             throw new Error("StepDefinitions.register: parameter 'rRegex' must be a valid RegExp object");
           }
-          if (jQueryDOM.type(fnFunc) !== "function") {
+          if (typeof fnFunc !== "function") {
             throw new Error("StepDefinitions.register: parameter 'fnFunc' must be a valid Function");
           }
 

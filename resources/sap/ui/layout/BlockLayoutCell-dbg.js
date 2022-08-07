@@ -1,19 +1,18 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 sap.ui.define([
 	'sap/ui/core/Control',
-	'sap/ui/Device',
 	'./library',
 	"./BlockLayoutCellRenderer",
 	"sap/base/Log",
 	"./BlockLayoutCellData",
 	"sap/ui/thirdparty/jquery"
 ],
-	function(Control, Device, library, BlockLayoutCellRenderer, Log, BlockLayoutCellData, jQuery) {
+	function(Control, library, BlockLayoutCellRenderer, Log, BlockLayoutCellData, jQuery) {
 		"use strict";
 
 		/**
@@ -28,7 +27,7 @@ sap.ui.define([
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.64.0
+		 * @version 1.96.2
 		 *
 		 * @constructor
 		 * @public
@@ -114,7 +113,7 @@ sap.ui.define([
 				oRow._handleEvent(oEvent);
 			}
 			//Check if current cell has defined width
-			if (this.getWidth() != 0) {
+			if (oLayoutData && this.getWidth() != 0) {
 				this.getLayoutData().setSize(this.getWidth());
 			}
 
@@ -126,7 +125,7 @@ sap.ui.define([
 		 *
 		 * @public
 		 * @param {number} iWidth value.
-		 * @returns {sap.ui.layout.BlockLayoutCell} this BlockLayoutCell reference for chaining.
+		 * @returns {this} this BlockLayoutCell reference for chaining.
 		 */
 		BlockLayoutCell.prototype.setWidth = function (iWidth) {
 			this.setProperty("width", iWidth);
@@ -139,36 +138,18 @@ sap.ui.define([
 		};
 
 		BlockLayoutCell.prototype.setTitleLink = function(oObject) {
-				if (oObject && oObject.getMetadata().getName() !== "sap.m.Link") {
-					Log.warning("sap.ui.layout.BlockLayoutCell " + this.getId() + ": Can't add value for titleLink aggregation different than sap.m.Link.");
-					return;
-				}
+			if (oObject && oObject.getMetadata().getName() !== "sap.m.Link") {
+				Log.warning("sap.ui.layout.BlockLayoutCell " + this.getId() + ": Can't add value for titleLink aggregation different than sap.m.Link.");
+				return this;
+			}
 
-				this.setAggregation("titleLink", oObject);
+			this.setAggregation("titleLink", oObject);
 
 			return this;
 		};
 
 		BlockLayoutCell.prototype._setParentRowScrollable = function (scrollable) {
 			this._parentRowScrollable = scrollable;
-		};
-
-		BlockLayoutCell.prototype.onAfterRendering = function (oEvent) {
-
-			// fixes the issue in IE when the block layout size is auto
-			// like BlockLayout in a Dialog
-			if (Device.browser.internet_explorer) {
-				var bHasParentsThatHaveAutoHeight = false;
-				this.$().parents().toArray().forEach(function (element) {
-					if (element.style.height === "auto" || (element.className.indexOf("sapMDialogScroll") != -1)) {
-						bHasParentsThatHaveAutoHeight = true;
-					}
-				});
-
-				if (bHasParentsThatHaveAutoHeight){
-					this.$()[0].style.flex = this._flexWidth + ' 1 auto';
-				}
-			}
 		};
 
 		BlockLayoutCell.prototype._getParentRowScrollable = function () {

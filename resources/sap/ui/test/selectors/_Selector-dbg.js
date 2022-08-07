@@ -1,15 +1,19 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 sap.ui.define([
     "sap/ui/thirdparty/jquery",
     "sap/ui/base/ManagedObject",
-    "sap/ui/test/_OpaLogger"
-], function ($, ManagedObject, _OpaLogger) {
-	"use strict";
+    "sap/ui/test/_OpaLogger",
+    'sap/ui/test/_ControlFinder',
+    'sap/ui/core/Element',
+    'sap/ui/core/mvc/View',
+    'sap/ui/base/ManagedObjectMetadata'
+], function ($, ManagedObject, _OpaLogger, _ControlFinder, UI5Element, View, ManagedObjectMetadata) {
+    "use strict";
 
     /**
      * Selector generator for controls. This class should be extended by all other generators.
@@ -22,8 +26,8 @@ sap.ui.define([
     var _Selector = ManagedObject.extend("sap.ui.test.selectors._Selector", {
 
         constructor: function () {
-			this._oLogger = _OpaLogger.getLogger(this.getMetadata().getName());
-			return ManagedObject.prototype.constructor.apply(this, arguments);
+            this._oLogger = _OpaLogger.getLogger(this.getMetadata().getName());
+            return ManagedObject.prototype.constructor.apply(this, arguments);
         },
 
         /**
@@ -40,13 +44,13 @@ sap.ui.define([
             var vResult = this._generate.apply(this, arguments);
 
             if (vResult) {
-                if ($.isArray(vResult)) {
+                if (Array.isArray(vResult)) {
                     // result is a list of selectors (e.g.: bindings for several properties)
                     return vResult.filter(function (vSelector) {
                         // filter out empty results
-                        return vSelector && (!$.isArray(vSelector) || vSelector.length);
+                        return vSelector && (!Array.isArray(vSelector) || vSelector.length);
                     }).map(function (vItem) {
-                        if ($.isArray(vItem)) {
+                        if (Array.isArray(vItem)) {
                             // selector has multiple parts (e.g.: composite binding)
                             return vItem.map(function (mItemPart) {
                                 return $.extend({}, this._createSelectorBase(oControl, mItemPart), mItemPart);
@@ -62,40 +66,55 @@ sap.ui.define([
             }
         },
 
-        // override for inheriting selectors that need an ancestor control selector
-        _getAncestors: function () {
+        // override for selectors that need an ancestor control selector
+        _isAncestorRequired: function () {
+            return false;
+        },
+        _getAncestor: function () {
+            return null;
+        },
+
+        // override for selectors that need to be unique only within a certain sub-tree (starting with the validation root)
+        _isValidationRootRequired: function () {
+            return false;
+        },
+        _getValidationRoot: function () {
             return null;
         },
 
         _createSelectorBase: function (oControl, mSelector) {
+            if (_ControlFinder._isControlInStaticArea(oControl)) {
+                mSelector.searchOpenDialogs = true;
+            }
             if (mSelector.skipBasic) {
                 delete mSelector.skipBasic;
                 return mSelector;
             } else {
-                return {
-                    controlType: oControl.getMetadata()._sClassName,
-                    viewName: this._getControlViewName(oControl)
+                var mBasic = {
+                    controlType: oControl.getMetadata()._sClassName
                 };
+                var oView = this._getControlView(oControl);
+                if (oView) {
+                    $.extend(mBasic, this._getViewIdOrName(oView));
+                }
+                return mBasic;
             }
         },
 
         /**
-         * Get the viewName of the view to which a control belongs or undefined, if such a view does not exist
+         * Get the view to which a control belongs or undefined, if such a view does not exist
          * @param {object} oControl the control to examine
-         * @returns {string} viewName of the control's view
+         * @returns {object} the control's view
          * @private
          */
-        _getControlViewName: function (oControl) {
-            // TODO: handle controls in static area?
+        _getControlView: function (oControl) {
             if (!oControl) {
                 return undefined;
             }
             if (oControl.getViewName) {
-                var sViewName = oControl.getViewName();
-                this._oLogger.debug("Control " + oControl + " has viewName " + sViewName);
-                return sViewName;
+                return oControl;
             } else {
-                return this._getControlViewName(oControl.getParent());
+                return this._getControlView(oControl.getParent());
             }
         },
 
@@ -110,6 +129,27 @@ sap.ui.define([
                         return this._findAncestor(oParent, fnCheck);
                     }
                 }
+            }
+        },
+
+        // returns the viewId or viewName - the first one which is unique - or empty object if neither is unique
+        _getViewIdOrName: function (oView) {
+            var sViewId = oView.getId();
+            var sViewName = oView.getViewName();
+
+            if (ManagedObjectMetadata.isGeneratedId(sViewId)) {
+                var aViewsWithSameName = UI5Element.registry.filter(function (oElement) {
+                    return oElement instanceof View;
+                }).filter(function (oElement) {
+                    return oElement.getViewName() === sViewName;
+                });
+                return aViewsWithSameName.length > 1 ? {} : {
+                    viewName: sViewName
+                };
+            } else {
+                return {
+                    viewId: sViewId
+                };
             }
         }
     });

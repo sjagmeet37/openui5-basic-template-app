@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -40,7 +40,7 @@ sap.ui.define([
 	 * @class Static class for enabling declarative UI support.
 	 *
 	 * @author Peter Muessig, Tino Butz
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @since 1.7.0
 	 * @public
 	 * @alias sap.ui.core.DeclarativeSupport
@@ -187,21 +187,24 @@ sap.ui.define([
 
 		var sType = $element.attr("data-sap-ui-type");
 		if (sType) {
-			var fnClass = sap.ui.requireSync(sType.replace(/\./g, "/")); // make sure fnClass.getMatadata() is available
+			// make sure fnClass.getMatadata() is available
+			var fnClass = sap.ui.requireSync(sType.replace(/\./g, "/")); // legacy-relevant
 			fnClass = fnClass || ObjectPath.get(sType);
 			assert(typeof fnClass !== "undefined", "Class not found: " + sType);
 
 
 			var mSettings = {};
 			mSettings.id = this._getId($element, oView);
-			mSettings.processingMode = oView && oView._sProcessingMode;
+			if ( oView && oView._sProcessingMode != null && fnClass.getMetadata().hasSpecialSetting("processingMode") ) {
+				mSettings.processingMode = oView._sProcessingMode;
+			}
 			this._addSettingsForAttributes(mSettings, fnClass, oElement, oView);
 			this._addSettingsForAggregations(mSettings, fnClass, oElement, oView);
 
 			var oControl;
 			if (View.prototype.isPrototypeOf(fnClass.prototype) && typeof fnClass._sType === "string") {
 				// for views having a factory function defined we use the factory function!
-				oControl = View._legacyCreate(mSettings, undefined, fnClass._sType);
+				oControl = View._create(mSettings, undefined, fnClass._sType);
 			} else {
 				oControl = new fnClass(mSettings);
 			}

@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -12,8 +12,9 @@ sap.ui.define([
 	'./library',
 	'sap/ui/core/Control',
 	'sap/ui/core/EnabledPropagator',
+	"sap/ui/events/KeyCodes",
 	'./ToolbarRenderer',
-	"sap/ui/thirdparty/jquery"
+	"sap/ui/core/library"
 ],
 function(
 	BarInPageEnabler,
@@ -22,8 +23,9 @@ function(
 	library,
 	Control,
 	EnabledPropagator,
+	KeyCodes,
 	ToolbarRenderer,
-	jQuery
+	coreLibrary
 ) {
 	"use strict";
 
@@ -60,7 +62,9 @@ function(
 	 * You can define the width of the horizontal space or make it flexible to cover the remaining space
 	 * between the <code>Toolbar</code> items (for example, to to push an item to the edge of the <code>Toolbar</code>.
 	 *
-	 * <b>Note:</b> {@link sap.m.ToolbarLayoutData} should not be used together with {@link sap.m.ToolbarSpacer}.
+	 * <b>Note:</b> The {@link sap.m.ToolbarSpacer} is a flex control that is intended to
+	 * control its own behavior, thus {@link sap.m.ToolbarLayoutData} is not supported as value for the
+	 * <code>layoutData</code> aggregation of {@link sap.m.ToolbarSpacer} and if set it's ignored.
 	 *
 	 * @see {@link fiori:https://experience.sap.com/fiori-design-web/toolbar-overview/ Toolbar}
 	 *
@@ -68,7 +72,7 @@ function(
 	 * @implements sap.ui.core.Toolbar,sap.m.IBar
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -126,7 +130,24 @@ function(
 			 * <b>Note:</b> The visual styles are theme-dependent.
 			 * @since 1.54
 			 */
-			style : {type : "sap.m.ToolbarStyle", group : "Appearance", defaultValue : ToolbarStyle.Standard}
+			style : {type : "sap.m.ToolbarStyle", group : "Appearance", defaultValue : ToolbarStyle.Standard},
+
+			/**
+			 * Defines the aria-haspopup attribute of the <code>Toolbar</code>. if the active <code>design</code> is true.
+			 *
+			 * <b>Guidance for choosing appropriate value:</b>
+			 * <ul>
+			 * <li> We recommend that you use the {@link sap.ui.core.aria.HasPopup} enumeration.</li>
+			 * <li> If you use controls based on <code>sap.m.Popover</code> or <code>sap.m.Dialog</code>,
+			 * then you must use <code>AriaHasPopup.Dialog</code> (both <code>sap.m.Popover</code> and
+			 * <code>sap.m.Dialog</code> have role "dialog" assigned internally).</li>
+			 * <li> If you use other controls, or directly <code>sap.ui.core.Popup</code>, you need to check
+			 * the container role/type and map the value of <code>ariaHasPopup</code> accordingly.</li>
+			 * </ul>
+			 *
+			 * @since 1.79.0
+			 */
+			ariaHasPopup : {type: "string", group : "Accessibility", defaultValue : null}
 		},
 		defaultAggregation : "content",
 		aggregations : {
@@ -247,6 +268,22 @@ function(
 		}
 	};
 
+	 /**
+	 * Sets the accessibility enablement
+	 * @param {string} bEnabled
+	 * @returns {sap.m.IBar} this for chaining
+	 * @private
+	 */
+	Toolbar.prototype._setEnableAccessibilty = function (bEnabled) {
+		var bFastGroupValue = bEnabled ? "true" : "false",
+			sRoleValue = bEnabled ? "toolbar" : "none";
+
+		this.data("sap-ui-fastnavgroup", bFastGroupValue, bEnabled);
+		this._setRootAccessibilityRole(sRoleValue);
+
+		return this;
+	};
+
 	Toolbar.prototype.init = function() {
 		// define group for F6 handling
 		this.data("sap-ui-fastnavgroup", "true", true);
@@ -309,8 +346,18 @@ function(
 		}
 	};
 
-	// keyboard space handling mimic the enter event
-	Toolbar.prototype.onsapspace = Toolbar.prototype.onsapenter;
+	Toolbar.prototype.onsapspace = function(oEvent) {
+		// Prevent browser scrolling in case of SPACE key
+		if (oEvent.srcControl === this) {
+			oEvent.preventDefault();
+		}
+	};
+
+	Toolbar.prototype.onkeyup = function(oEvent){
+		if (oEvent.which === KeyCodes.SPACE) {
+			this.onsapenter(oEvent);
+		}
+	};
 
 	// mark to inform active handling is done by toolbar
 	Toolbar.prototype.ontouchstart = function(oEvent) {
@@ -379,7 +426,7 @@ function(
 	 *
 	 * @param {sap.m.ToolbarDesign} sDesign The design for the Toolbar.
 	 * @param {boolean} [bSetAutoDesign] Determines auto design context
-	 * @returns {sap.m.Toolbar}
+	 * @returns {this}
 	 */
 	Toolbar.prototype.setDesign = function(sDesign, bSetAutoDesign) {
 		if (!bSetAutoDesign) {
@@ -387,27 +434,6 @@ function(
 		}
 
 		this._sAutoDesign = this.validateProperty("design", sDesign);
-		return this;
-	};
-
-	Toolbar.prototype.setStyle = function(sNewStyle) {
-		var sTbStyleClass, bEnable;
-
-		if (this.getStyle() === sNewStyle) {
-			return this;
-		}
-
-		this.setProperty("style", sNewStyle, true /* suppress invalidate */);
-
-		if (this.getDomRef()) {
-			Object.keys(ToolbarStyle).forEach(function(sStyleKey) {
-
-				sTbStyleClass = "sapMTB" + sStyleKey;
-				bEnable = (sStyleKey === sNewStyle);
-				this.$().toggleClass(sTbStyleClass, bEnable);
-			}, this);
-		}
-
 		return this;
 	};
 
@@ -433,14 +459,15 @@ function(
 	 * @protected
 	 */
 	Toolbar.prototype.getTitleControl = function() {
-		if (!sap.m.Title) {
+		var Title = sap.ui.require("sap/m/Title");
+		if (!Title) {
 			return;
 		}
 
 		var aContent = this.getContent();
 		for (var i = 0; i < aContent.length; i++) {
 			var oContent = aContent[i];
-			if (oContent instanceof sap.m.Title && oContent.getVisible()) {
+			if (oContent instanceof Title && oContent.getVisible()) {
 				return oContent;
 			}
 		}
@@ -449,7 +476,7 @@ function(
 	/**
 	 * Returns the first sap.m.Title control id inside the toolbar for the accessibility
 	 *
-	 * @returns {String} The <code>sap.m.Title</code> ID
+	 * @returns {sap.ui.core.ID} The <code>sap.m.Title</code> ID
 	 * @since 1.28
 	 * @protected
 	 */
@@ -521,7 +548,7 @@ function(
 	Toolbar.prototype._getContextOptions  = BarInPageEnabler.prototype._getContextOptions;
 
 	/**
-	 * Gets accessibility role of the Root HTML element.
+	 * Sets accessibility role of the Root HTML element.
 	 *
 	 * @param {string} sRole AccessibilityRole of the root Element
 	 * @returns {sap.m.IBar} <code>this</code> to allow method chaining
@@ -536,6 +563,26 @@ function(
 	 * @private
 	 */
 	Toolbar.prototype._getRootAccessibilityRole = BarInPageEnabler.prototype._getRootAccessibilityRole;
+
+
+    /**
+     * Sets accessibility aria-level attribute of the Root HTML element.
+     *
+     * This is only needed if <code>sap.m.Bar</code> has role="heading"
+     * @param {string} sLevel aria-level attribute of the root Element
+     * @returns {sap.m.IBar} <code>this</code> to allow method chaining
+     * @private
+     */
+    Toolbar.prototype._setRootAriaLevel = BarInPageEnabler.prototype._setRootAriaLevel;
+
+    /**
+     * Gets accessibility aria-level attribute of the Root HTML element.
+     *
+     * This is only needed if <code>sap.m.Bar</code> has role="heading"
+     * @returns {string} aria-level
+     * @private
+     */
+    Toolbar.prototype._getRootAriaLevel = BarInPageEnabler.prototype._getRootAriaLevel;
 
 	return Toolbar;
 

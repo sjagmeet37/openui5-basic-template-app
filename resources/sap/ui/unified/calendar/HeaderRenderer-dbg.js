@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -16,6 +16,7 @@ sap.ui.define(["sap/base/security/encodeXML"],
 	 * @namespace
 	 */
 	var HeaderRenderer = {
+		apiVersion: 2
 	};
 
 	/**
@@ -28,38 +29,38 @@ sap.ui.define(["sap/base/security/encodeXML"],
 		var sLanguage = sap.ui.getCore().getConfiguration().getLocale().getLanguage();
 		var sTooltip = oHead.getTooltip_AsString();
 		var sId = oHead.getId();
-		var mAccProps = {};
-		var sLabelNext = sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified").getText("CALENDAR_BTN_NEXT");
-		var sLabelPrev = sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified").getText("CALENDAR_BTN_PREV");
+		var oRB = sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified");
+		var sLabelNext = oRB.getText("CALENDAR_BTN_NEXT");
+		var sLabelPrev = oRB.getText("CALENDAR_BTN_PREV");
+		var sLabelToday = oRB.getText("CALENDAR_BTN_TODAY");
 
-		oRm.write("<div");
-		oRm.writeControlData(oHead);
-		oRm.addClass("sapUiCalHead");
-		oRm.writeClasses();
+		oRm.openStart("div", oHead);
+		oRm.class("sapUiCalHead");
+		if (oHead.getVisibleCurrentDateButton()) {
+			oRm.class("sapUiCalHeaderWithTodayButton");
+		}
 
 		if (sTooltip) {
-			oRm.writeAttributeEscaped('title', sTooltip);
+			oRm.attr('title', sTooltip);
 		}
 
-		oRm.writeAccessibilityState(oHead);
+		oRm.accessibilityState(oHead);
 
-		oRm.write(">"); // div element
+		oRm.openEnd(); // div element
 
-		oRm.write("<button");
-		oRm.writeAttributeEscaped('id', sId + '-prev');
-		oRm.writeAttributeEscaped("title", sLabelPrev);
-		oRm.writeAccessibilityState(null, { label: sLabelPrev});
+		oRm.openStart("button", sId + '-prev');
+		oRm.attr("title", sLabelPrev);
+		oRm.accessibilityState(null, { label: sLabelPrev});
 
-		oRm.addClass("sapUiCalHeadPrev");
+		oRm.class("sapUiCalHeadPrev");
 		if (!oHead.getEnabledPrevious()) {
-			oRm.addClass("sapUiCalDsbl");
-			oRm.writeAttribute('disabled', "disabled");
+			oRm.class("sapUiCalDsbl");
+			oRm.attr('disabled', "disabled");
 		}
-		oRm.writeAttribute('tabindex', "-1");
-		oRm.writeClasses();
-		oRm.write(">"); // button element
-		oRm.writeIcon("sap-icon://slim-arrow-left", null, { title: null });
-		oRm.write("</button>");
+		oRm.attr('tabindex', "-1");
+		oRm.openEnd(); // button element
+		oRm.icon("sap-icon://slim-arrow-left", null, { title: null });
+		oRm.close("button");
 
 		var iFirst = -1;
 		var iLast = -1;
@@ -104,71 +105,83 @@ sap.ui.define(["sap/base/security/encodeXML"],
 				iFirst = 2;
 				iLast = 3;
 			}
-			this.renderCalendarButtons(oRm, oHead, sId, iFirst, iLast, mAccProps, iBtn);
+			this.renderCalendarButtons(oRm, oHead, sId, iFirst, iLast, iBtn);
+		}
+		if (!oHead.getVisibleButton0() && !oHead.getVisibleButton1() && !oHead.getVisibleButton2() && !oHead._getVisibleButton3() && !oHead._getVisibleButton4()) {
+			oRm.openStart("div", sId + '-B' + "-Placeholder");
+			oRm.class("sapUiCalHeadBPlaceholder");
+			oRm.openEnd(); // span element
+			oRm.close("span");
 		}
 
-		oRm.write("<button");
-		oRm.writeAttributeEscaped('id', sId + '-next');
-		oRm.writeAttributeEscaped("title", sLabelNext);
-		oRm.writeAccessibilityState(null, { label: sLabelNext});
+		oRm.openStart("button", sId + '-next');
+		oRm.attr("title", sLabelNext);
+		oRm.accessibilityState(null, { label: sLabelNext});
 
-		oRm.addClass("sapUiCalHeadNext");
+		oRm.class("sapUiCalHeadNext");
 		if (!oHead.getEnabledNext()) {
-			oRm.addClass("sapUiCalDsbl");
-			oRm.writeAttribute('disabled', "disabled");
+			oRm.class("sapUiCalDsbl");
+			oRm.attr('disabled', "disabled");
 		}
-		oRm.writeAttribute('tabindex', "-1");
-		oRm.writeClasses();
-		oRm.write(">"); // button element
-		oRm.writeIcon("sap-icon://slim-arrow-right", null, { title: null });
-		oRm.write("</button>");
+		oRm.attr('tabindex', "-1");
+		oRm.openEnd(); // button element
+		oRm.icon("sap-icon://slim-arrow-right", null, { title: null });
+		oRm.close("button");
 
-		oRm.write("</div>");
+		if (oHead.getVisibleCurrentDateButton()) {
+			oRm.openStart("button", sId + '-today');
+			oRm.attr("title", sLabelToday);
+			oRm.accessibilityState(null, { label: sLabelToday});
+
+			oRm.class("sapUiCalHeadToday");
+			oRm.attr('tabindex', "-1");
+			oRm.openEnd(); // button element
+			oRm.icon("sap-icon://appointment", null, { title: null });
+			oRm.close("button");
+		}
+
+		oRm.close("div");
 
 	};
 
-	HeaderRenderer.renderCalendarButtons = function (oRm, oHead, sId, iFirst, iLast, mAccProps, i) {
+	HeaderRenderer.renderCalendarButtons = function (oRm, oHead, sId, iFirst, iLast, i) {
+		var mAccProps = {};
+
 		if (this.getVisibleButton(oHead, i)) {
-			oRm.write("<button");
-			oRm.writeAttributeEscaped('id', sId + '-B' + i);
-			oRm.addClass("sapUiCalHeadB");
-			oRm.addClass("sapUiCalHeadB" + i);
-			if (iFirst == i) {
-				oRm.addClass("sapUiCalHeadBFirst");
+			oRm.openStart("button", sId + '-B' + i);
+			oRm.class("sapUiCalHeadB");
+			oRm.class("sapUiCalHeadB" + i);
+			if (iFirst === i) {
+				oRm.class("sapUiCalHeadBFirst");
 			}
-			if (iLast == i) {
-				oRm.addClass("sapUiCalHeadBLast");
+			if (iLast === i) {
+				oRm.class("sapUiCalHeadBLast");
 			}
-			oRm.writeAttribute('tabindex', "-1");
-			oRm.writeClasses();
+			oRm.attr('tabindex', "-1");
 			if (this.getAriaLabelButton(oHead, i)) {
 				mAccProps["label"] = this.getAriaLabelButton(oHead, i);
 			}
-			oRm.writeAccessibilityState(null, mAccProps);
+			oRm.accessibilityState(null, mAccProps);
 			mAccProps = {};
-			oRm.write(">"); // button element
+			oRm.openEnd(); // button element
 			var sText = this.getTextButton(oHead, i) || "";
 			var sAddText = this.getAdditionalTextButton(oHead, i) || "";
 			if (sAddText) {
-				oRm.write("<span");
-				oRm.writeAttributeEscaped('id', sId + '-B' + i + "-Text");
-				oRm.addClass("sapUiCalHeadBText");
-				oRm.writeClasses();
-				oRm.write(">"); // span element
-				oRm.writeEscaped(sText);
-				oRm.write("</span>");
+				oRm.openStart("span", sId + '-B' + i + "-Text");
+				oRm.class("sapUiCalHeadBText");
+				oRm.openEnd(); // span element
+				oRm.text(sText);
+				oRm.close("span");
 
-				oRm.write("<span");
-				oRm.writeAttributeEscaped('id', sId + '-B' + i + "-AddText");
-				oRm.addClass("sapUiCalHeadBAddText");
-				oRm.writeClasses();
-				oRm.write(">"); // span element
-				oRm.writeEscaped(sAddText);
-				oRm.write("</span>");
+				oRm.openStart("span", sId + '-B' + i + "-AddText");
+				oRm.class("sapUiCalHeadBAddText");
+				oRm.openEnd(); // span element
+				oRm.text(sAddText);
+				oRm.close("span");
 			} else {
-				oRm.writeEscaped(sText);
+				oRm.text(sText);
 			}
-			oRm.write("</button>");
+			oRm.close("button");
 		}
 	};
 

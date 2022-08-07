@@ -1,26 +1,32 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], function(Device, Log, jQuery) {
+sap.ui.define(["sap/base/Log", "sap/base/util/extend", "sap/ui/core/Component"], function(Log, extend, Component) {
 	"use strict";
 
 	/**
 	 * Provide methods for sap.ui.core.routing.Route in async mode
 	 * @private
-	 * @experimental
 	 * @since 1.33
 	 */
 	return {
 
 		/**
+		 * Executes the route matched logic
+		 *
+		 * @param {object} oArguments The arguments of the event
+		 * @param {Promise} oSequencePromise Promise chain for resolution in the correct order
+		 * @param {sap.ui.core.routing.Route} oNestingChild The nesting route
+		 * @returns {Promise} resolves with {name: *, view: *, control: *}
 		 * @private
 		 */
 		_routeMatched : function(oArguments, oSequencePromise, oNestingChild) {
 
 			var oRouter = this._oRouter,
 				oTarget,
+				oTargets,
 				oConfig,
 				oEventData,
 				oView = null,
@@ -28,9 +34,49 @@ sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], fun
 				bInitial,
 				oTargetData,
 				oCurrentPromise,
-				that = this;
+				aAlignedTargets,
+				bRepeated = (oRouter._oMatchedRoute === this);
 
-			oRouter._matchedRoute = this;
+			oRouter._stopWaitingTitleChangedFromChild();
+
+			if (oRouter._oMatchedRoute) {
+				// clear the dynamicTarget of the previous matched route
+				delete oRouter._oMatchedRoute._oConfig.dynamicTarget;
+			}
+
+			oRouter._oMatchedRoute = this;
+			oRouter._bMatchingProcessStarted = true;
+
+			oConfig = extend({}, oRouter._oConfig, this._oConfig);
+
+			oTargets = oRouter.getTargets();
+			var sTitleName;
+			if (oTargets) {
+				sTitleName = oTargets._getTitleTargetName(oConfig.target, oConfig.titleTarget);
+				if (sTitleName && oRouter._oPreviousTitleChangedRoute !== this) {
+					oRouter._bFireTitleChanged = true;
+					if ((oRouter._oOwner && oRouter._oOwner._bRoutingPropagateTitle)) {
+						var oParentComponent = Component.getOwnerComponentFor(oRouter._oOwner);
+						var oParentRouter = oParentComponent && oParentComponent.getRouter();
+						if (oParentRouter) {
+							oParentRouter._waitForTitleChangedOn(oRouter);
+						}
+					}
+				} else {
+					oRouter._bFireTitleChanged = false;
+				}
+
+				if (this._oConfig.target) {
+					aAlignedTargets = oTargets._alignTargetsInfo(this._oConfig.target);
+					aAlignedTargets.forEach(function(oTarget){
+						oTarget.propagateTitle = oTarget.hasOwnProperty("propagateTitle") ? oTarget.propagateTitle : oRouter._oConfig.propagateTitle;
+						oTarget.routeRelevant = true;
+						oTarget.repeatedRoute = bRepeated;
+					});
+				}
+			} else {
+				aAlignedTargets = this._oConfig.target;
+			}
 
 			if (!oSequencePromise || oSequencePromise === true) {
 				bInitial = true;
@@ -45,10 +91,9 @@ sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], fun
 				this._oNestingParent._routeMatched(oArguments, oSequencePromise, this);
 			}
 
-			oConfig = jQuery.extend({}, oRouter._oConfig, this._oConfig);
 
 			// make a copy of arguments and forward route config to target
-			oTargetData = jQuery.extend({}, oArguments);
+			oTargetData = Object.assign({}, oArguments);
 			oTargetData.routeConfig = oConfig;
 
 			oEventData = {
@@ -72,7 +117,7 @@ sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], fun
 				// update the targets config so defaults are taken into account - since targets cannot be added in runtime they don't merge configs like routes do
 				oTarget._updateOptions(this._convertToTargetOptions(oConfig));
 
-				oSequencePromise = oTarget._place(oSequencePromise);
+				oSequencePromise = oTarget._place(oSequencePromise, { legacy: true });
 
 				// this is for sap.m.routing.Router to chain the promise to the navigation promise in TargetHandler
 				if (this._oRouter._oTargetHandler && this._oRouter._oTargetHandler._chainNavigation) {
@@ -81,45 +126,22 @@ sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], fun
 						return oCurrentPromise;
 					});
 				}
-			} else { // let targets do the placement + the events
-				if (!this._oConfig.afterCreateHook) {
-					this._oConfig.afterCreateHook = function(oTargetObject) {
-						if (oTargetObject.isA("sap.ui.core.UIComponent")) {
-							var oRouter = oTargetObject.getRouter();
-							if (oRouter) {
-								that.attachEvent("switched", function() {
-									// stop the router in nested component when the Route which loads it is navigated away
-									oRouter.stop();
-								});
-							}
-						}
-					};
-				}
-
-				if (Device.browser.msie || Device.browser.edge) {
-					oCurrentPromise = oSequencePromise;
-
-					// when Promise polyfill is used for IE or Edge, the synchronous DOM or CSS change, e.g. showing a busy indicator, doesn't get
-					// a slot for being executed. Therefore a explicit 0 timeout is added for allowing the DOM or CSS change to be executed before
-					// the view is loaded.
-					oSequencePromise = new Promise(function(resolve, reject) {
-						setTimeout(function() {
-							// check whether the _oTargets still exists after the 0 timeout.
-							// It could be already cleared once the router is destroyed before the timeout.
-							if (oRouter._oTargets) {
-								var oDisplayPromise = oRouter._oTargets._display(that._oConfig.target, oTargetData, that._oConfig.titleTarget, oCurrentPromise, that._oConfig.afterCreateHook);
-								oDisplayPromise.then(resolve, reject);
-							} else {
-								resolve();
-							}
-						}, 0);
-					});
-				} else {
-					oSequencePromise = oRouter._oTargets._display(this._oConfig.target, oTargetData, this._oConfig.titleTarget, oSequencePromise, this._oConfig.afterCreateHook);
-				}
+			} else {
+				oSequencePromise = oRouter._oTargets._display(aAlignedTargets, oTargetData, this._oConfig.titleTarget, oSequencePromise);
 			}
 
 			return oSequencePromise.then(function(oResult) {
+				oRouter._bMatchingProcessStarted = false;
+				var aResult, aViews, aControls;
+
+				// The legacy config uses single target to display which makes the promise resolve with an object
+				// However, the new config uses targets to display which makes the promise resolve with an array
+				// Both cases need to be handled here
+				if (Array.isArray(oResult)) {
+					aResult = oResult;
+					oResult = aResult[0];
+				}
+
 				oResult = oResult || {};
 
 				oView = oResult.view;
@@ -128,6 +150,19 @@ sap.ui.define(['sap/ui/Device', "sap/base/Log", "sap/ui/thirdparty/jquery"], fun
 				// Extend the event data with view and targetControl
 				oEventData.view = oView;
 				oEventData.targetControl = oTargetControl;
+
+				if (aResult) {
+					aViews = [];
+					aControls = [];
+
+					aResult.forEach(function(oResult) {
+						aViews.push(oResult.view);
+						aControls.push(oResult.control);
+					});
+
+					oEventData.views = aViews;
+					oEventData.targetControls = aControls;
+				}
 
 				if (oConfig.callback) {
 					//Targets don't pass TargetControl and view since there might be multiple

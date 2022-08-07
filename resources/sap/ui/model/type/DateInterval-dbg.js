@@ -1,9 +1,9 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-
+/*eslint-disable max-len */
 
 sap.ui.define([
 	'sap/ui/core/format/DateFormat',
@@ -11,7 +11,7 @@ sap.ui.define([
 	'sap/ui/model/FormatException',
 	'sap/ui/model/ParseException',
 	'sap/ui/model/ValidateException',
-	"sap/ui/thirdparty/jquery"
+	"sap/base/util/isEmptyObject"
 ],
 	function(
 		DateFormat,
@@ -19,7 +19,7 @@ sap.ui.define([
 		FormatException,
 		ParseException,
 		ValidateException,
-		jQuery
+		isEmptyObject
 	) {
 	"use strict";
 
@@ -33,7 +33,7 @@ sap.ui.define([
 	 * @extends sap.ui.model.CompositeType
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @public
 	 * @param {object} [oFormatOptions] Formatting options. For a list of all available options, see {@link sap.ui.core.format.DateFormat.getDateInstance DateFormat}.
@@ -45,8 +45,8 @@ sap.ui.define([
 	 *           For a list of all available options, see {@link sap.ui.core.format.DateFormat.getDateInstance DateFormat}.
 	 *           In case an empty object is given, the default is the ISO date notation (yyyy-MM-dd).
 	 * @param {object} [oConstraints] Value constraints
-	 * @param {Date|String} [oConstraints.minimum] Smallest value allowed for this type. Values for constraints must use the same type as configured via <code>oFormatOptions.source</code>.
-	 * @param {Date|String} [oConstraints.maximum] Largest value allowed for this type. Values for constraints must use the same type as configured via <code>oFormatOptions.source</code>.
+	 * @param {Date|string} [oConstraints.minimum] Smallest value allowed for this type. Values for constraints must use the same type as configured via <code>oFormatOptions.source</code>.
+	 * @param {Date|string} [oConstraints.maximum] Largest value allowed for this type. Values for constraints must use the same type as configured via <code>oFormatOptions.source</code>.
 	 * @alias sap.ui.model.type.DateInterval
 	 */
 	var DateInterval = CompositeType.extend("sap.ui.model.type.DateInterval", /** @lends sap.ui.model.type.DateInterval.prototype  */ {
@@ -216,6 +216,8 @@ sap.ui.define([
 							aViolatedConstraints.push("maximum");
 							aMessages.push(oBundle.getText("Date.Maximum", [oCompareValue]));
 						}
+						break;
+					default: break;
 				}
 			}.bind(this));
 
@@ -249,7 +251,7 @@ sap.ui.define([
 		this.oFormatOptions.interval = true;
 		this.oOutputFormat = DateFormat.getDateInstance(this.oFormatOptions);
 		if (oSourceOptions) {
-			if (jQuery.isEmptyObject(oSourceOptions)) {
+			if (isEmptyObject(oSourceOptions)) {
 				// set the default pattern if oSourceOptions is given as an empty object
 				oSourceOptions = {pattern: "yyyy-MM-dd"};
 			}

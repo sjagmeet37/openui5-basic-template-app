@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -10,26 +10,26 @@ sap.ui.define([
 	'./library',
 	'sap/ui/Device',
 	'sap/ui/core/Control',
-	'sap/ui/core/IconPool',
 	'sap/ui/core/EnabledPropagator',
 	'sap/ui/core/library',
 	'./CheckBoxRenderer',
 	"sap/ui/thirdparty/jquery",
 	"sap/ui/events/KeyCodes",
-	'sap/ui/core/LabelEnablement'
+	'sap/ui/core/LabelEnablement',
+	'sap/ui/core/message/MessageMixin'
 ],
 	function(
 		Label,
 		library,
 		Device,
 		Control,
-		IconPool,
 		EnabledPropagator,
 		coreLibrary,
 		CheckBoxRenderer,
 		jQuery,
 		KeyCodes,
-		LabelEnablement
+		LabelEnablement,
+		MessageMixin
 	) {
 	"use strict";
 
@@ -85,10 +85,10 @@ sap.ui.define([
 	 * @see {@link fiori:https://experience.sap.com/fiori-design-web/checkbox/ Check Box}
 	 *
 	 * @extends sap.ui.core.Control
-	 * @implements sap.ui.core.IFormContent
+	 * @implements sap.ui.core.IFormContent, sap.ui.core.ISemanticFormContent
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -97,7 +97,7 @@ sap.ui.define([
 	 */
 	var CheckBox = Control.extend("sap.m.CheckBox", /** @lends sap.m.CheckBox.prototype */ { metadata : {
 
-		interfaces : ["sap.ui.core.IFormContent"],
+		interfaces : ["sap.ui.core.IFormContent", "sap.ui.core.ISemanticFormContent"],
 		library : "sap.m",
 		properties : {
 
@@ -187,6 +187,13 @@ sap.ui.define([
 			valueState : {type : "sap.ui.core.ValueState", group : "Data", defaultValue : ValueState.None},
 
 			/**
+			 * Defines the text that appears in the tooltip of the <code>CheckBox</code>. If this is not specified, a default text is shown from the resource bundle.
+			 * @since 1.74
+			 * @private
+			 */
+			valueStateText: { type: "string", group: "Misc", defaultValue: null, visibility: "hidden" },
+
+			/**
 			 * Determines whether the <code>CheckBox</code> is in display only state.
 			 *
 			 * When set to <code>true</code>, the <code>CheckBox</code> is not interactive, not editable, not focusable
@@ -240,17 +247,21 @@ sap.ui.define([
 				}
 			}
 		},
+		dnd: { draggable: true, droppable: false },
 		designtime: "sap/m/designtime/CheckBox.designtime"
 	}});
 
 	EnabledPropagator.call(CheckBox.prototype);
+
+	// Apply the message mixin so all Messages on the CheckBox will have additionalText property set to ariaLabelledBy's text of the CheckBox
+	// and have valueState property of the CheckBox set to the message type.
+	MessageMixin.call(CheckBox.prototype);
 
 	/**
 	 * Lifecycle Methods
 	 */
 	CheckBox.prototype.init = function() {
 		this.addActiveState(this);
-		IconPool.insertFontFaceStyle();
 		this._handleReferencingLabels();
 	};
 
@@ -261,41 +272,11 @@ sap.ui.define([
 
 	// Public Methods
 
-	CheckBox.prototype.setSelected = function(bSelected) {
-		if (bSelected === this.getSelected()) {
-			return this;
-		}
-
-		this.$("CbBg").toggleClass("sapMCbMarkChecked", !!bSelected);
-		var oCheckBox = this.getDomRef("CB");
-		if (oCheckBox) {
-			bSelected ? oCheckBox.setAttribute('checked', 'checked') : oCheckBox.removeAttribute('checked');
-		}
-		this.setProperty("selected", bSelected, true);
-		this.$().attr("aria-checked", this._getAriaChecked());
-
-		return this;
-	};
-
-	CheckBox.prototype.setPartiallySelected = function(bPartiallySelected) {
-		if (bPartiallySelected === this.getPartiallySelected()) {
-			return this;
-		}
-
-		this.setProperty("partiallySelected", bPartiallySelected, true);
-		this.$("CbBg").toggleClass("sapMCbMarkPartiallyChecked", bPartiallySelected);
-		this.$().attr("aria-checked", this._getAriaChecked());
-
-		return this;
-	};
-
 	CheckBox.prototype.setText = function(sText) {
-		var oLabel = this._getLabel(),
-			bHasText = !!sText;
+		var oLabel = this._getLabel();
 
-		this.setProperty("text", sText, true);
+		this.setProperty("text", sText);
 		oLabel.setText(sText);
-		this.$().toggleClass("sapMCbHasLabel", bHasText);
 
 		return this;
 	};
@@ -317,7 +298,7 @@ sap.ui.define([
 	CheckBox.prototype.setTextDirection = function(sDirection) {
 		var oLabel = this._getLabel();
 
-		this.setProperty("textDirection", sDirection, true);
+		this.setProperty("textDirection", sDirection);
 		oLabel.setTextDirection(sDirection);
 
 		return this;
@@ -326,18 +307,21 @@ sap.ui.define([
 	CheckBox.prototype.setTextAlign = function(sAlign) {
 		var oLabel = this._getLabel();
 
-		this.setProperty("textAlign", sAlign, true);
+		this.setProperty("textAlign", sAlign);
 		oLabel.setTextAlign(sAlign);
 
 		return this;
 	};
 
+	CheckBox.prototype.setValueStateText = function(sText) {
+		return this.setProperty("valueStateText", sText);
+	};
+
 	CheckBox.prototype.setWrapping = function(bWrap) {
 		var oLabel = this._getLabel();
 
-		this.setProperty("wrapping", bWrap, true);
+		this.setProperty("wrapping", bWrap);
 		oLabel.setWrapping(bWrap);
-		this.$().toggleClass("sapMCbWrapped", bWrap);
 
 		return this;
 	};
@@ -359,6 +343,20 @@ sap.ui.define([
 		}
 	};
 
+	CheckBox.prototype.getFormattedState = function() {
+		var oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+
+		return this.getSelected() ? oBundle.getText("ACC_CTR_STATE_CHECKED") : oBundle.getText("ACC_CTR_STATE_NOT_CHECKED");
+	};
+
+	CheckBox.prototype.getFormFormattedValue = function() {
+		return this.getFormattedState();
+	};
+
+	CheckBox.prototype.getFormValueProperty = function () {
+		return "selected";
+	};
+
 	/**
 	 * Event handler called when the CheckBox is touched.
 	 *
@@ -378,7 +376,7 @@ sap.ui.define([
 		var bSelected;
 
 		if (this.getEnabled() && this.getEditable() && !this.getDisplayOnly()) {
-			this.$().focus(); // In IE taping on the input doesn`t focus the wrapper div.
+			this.$().trigger("focus"); // In IE taping on the input doesn`t focus the wrapper div.
 
 			bSelected = this._getSelectedState();
 			this.setSelected(bSelected);
@@ -401,7 +399,6 @@ sap.ui.define([
 			this.ontap(oEvent);
 			// stop browsers default behavior
 			oEvent.preventDefault();
-			oEvent.stopPropagation();
 		}
 	};
 
@@ -428,7 +425,7 @@ sap.ui.define([
 	 * Sets the tab index of the control
 	 *
 	 * @param {int} iTabIndex The tab index should be greater than or equal -1
-	 * @returns {sap.m.CheckBox} The <code>sap.m.CheckBox</code> instance
+	 * @returns {this} The <code>sap.m.CheckBox</code> instance
 	 * @since 1.16
 	 * @protected
 	 */
@@ -520,7 +517,7 @@ sap.ui.define([
 	 * @private
 	 */
 	CheckBox.prototype._fnLabelTapHandler = function () {
-		this.$().focus();
+		this.$().trigger("focus");
 	};
 
 	/**
@@ -545,14 +542,15 @@ sap.ui.define([
 	/**
 	 * @see sap.ui.core.Control#getAccessibilityInfo
 	 * @protected
-	 * @returns {Object} The <code>sap.m.CheckBox</code> accessibility information
+	 * @returns {object} The <code>sap.m.CheckBox</code> accessibility information
 	 */
 	CheckBox.prototype.getAccessibilityInfo = function() {
-		var oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+		var oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m"),
+			sText = this.getText();
 		return {
 			role: "checkbox",
 			type: oBundle.getText("ACC_CTR_TYPE_CHECKBOX"),
-			description: (this.getText() || "") + (this.getSelected() ? (" " + oBundle.getText("ACC_CTR_STATE_CHECKED")) : ""),
+			description: (sText ? sText + " " : "") + this.getFormattedState(),
 			focusable: this.getEnabled() && !this.getDisplayOnly(),
 			enabled: this.getEnabled(),
 			editable: this.getEditable()

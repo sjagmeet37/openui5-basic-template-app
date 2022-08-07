@@ -1,15 +1,16 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.layout.form.Form.
 sap.ui.define([
 	'sap/ui/core/Control',
+	'sap/ui/base/ManagedObjectObserver',
 	'sap/ui/layout/library',
 	'./FormRenderer'
-	], function(Control, library, FormRenderer) {
+	], function(Control, ManagedObjectObserver, library, FormRenderer) {
 	"use strict";
 
 	/**
@@ -43,7 +44,7 @@ sap.ui.define([
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -91,6 +92,10 @@ sap.ui.define([
 			 * If a <code>Title</code> element it used, the style of the title can be set.
 			 *
 			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
+			 *
+			 * <b>Note:</b> If the title is provided as a string, the title is rendered with a theme-dependent default level.
+			 * As the <code>Form</code> control cannot know the structure of the page, this might not fit the page structure.
+			 * In this case provide the title using a <code>Title</code> element and set its {@link sap.ui.core.Title#setLevel level} to the needed value.
 			 */
 			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false},
 
@@ -100,13 +105,14 @@ sap.ui.define([
 			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
 			 * If a title is needed inside the <code>Toolbar</code> it must be added at content to the <code>Toolbar</code>.
 			 * In this case add the <code>Title</code> to the <code>ariaLabelledBy</code> association.
+			 * Use the right title level to meet the visual requirements. This might be theme-dependent.
 			 * @since 1.36.0
 			 */
 			toolbar : {type : "sap.ui.core.Toolbar", multiple : false},
 
 			/**
 			 * Layout of the <code>Form</code>. The assigned <code>Layout</code> renders the <code>Form</code>.
-			 * We recommend using the <code>ResponsiveGridLayout</code> for rendering a <code>Form</code>,
+			 * We recommend using the {@link sap.ui.layout.form.ColumnLayout ColumnLayout} for rendering a <code>Form</code>,
 			 * as its responsiveness allows the available space to be used in the best way possible.
 			 */
 			layout : {type : "sap.ui.layout.form.FormLayout", multiple : false}
@@ -121,6 +127,24 @@ sap.ui.define([
 		},
 		designtime: "sap/ui/layout/designtime/form/Form.designtime"
 	}});
+
+	Form.prototype.init = function(){
+
+		this._oObserver = new ManagedObjectObserver(_observeChanges.bind(this));
+
+		this._oObserver.observe(this, {
+			properties: ["editable"],
+			aggregations: ["formContainers"]
+		});
+
+	};
+
+	Form.prototype.exit = function(){
+
+		this._oObserver.disconnect();
+		this._oObserver = undefined;
+
+	};
 
 	Form.prototype.toggleContainerExpanded = function(oContainer){
 
@@ -166,8 +190,13 @@ sap.ui.define([
 
 	Form.prototype.setEditable = function(bEditable) {
 
-		var bOldEditable = this.getEditable();
 		this.setProperty("editable", bEditable, true);
+
+		return this;
+
+	};
+
+	function _setEditable(bEditable, bOldEditable) {
 
 		if (bEditable != bOldEditable && this.getDomRef()) {
 			if (bEditable) {
@@ -177,21 +206,18 @@ sap.ui.define([
 				this.$().removeClass("sapUiFormEdit").removeClass("sapUiFormEdit-CTX");
 				this.$().attr("aria-readonly", "true");
 			}
-
-			// invalidate Labels
-			var aFormContainers = this.getFormContainers();
-			for (var i = 0; i < aFormContainers.length; i++) {
-				var oFormContainer = aFormContainers[i];
-				oFormContainer.invalidateLabels();
-			}
-
 		}
 
-		return this;
+		// update edit mode to FormElement (invalidate Labels)
+		var aFormContainers = this.getFormContainers();
+		for (var i = 0; i < aFormContainers.length; i++) {
+			var oFormContainer = aFormContainers[i];
+			oFormContainer._setEditable(bEditable);
+		}
 
-	};
+	}
 
-	Form.prototype.setToolbar = function(oToolbar) {
+	Form.prototype.setToolbar = function(oToolbar) { // don't use observer as library function needs to be called before aggregation update
 
 		// for sap.m.Toolbar Auto-design must be set to transparent
 		oToolbar = library.form.FormHelper.setToolbar.call(this, oToolbar);
@@ -228,7 +254,7 @@ sap.ui.define([
 		var oLayout = this.getLayout();
 		if (oLayout && oLayout.getContainerRenderedDomRef) {
 			return oLayout.getContainerRenderedDomRef(oContainer);
-		}else {
+		} else  {
 			return null;
 		}
 
@@ -247,7 +273,7 @@ sap.ui.define([
 		var oLayout = this.getLayout();
 		if (oLayout && oLayout.getElementRenderedDomRef) {
 			return oLayout.getElementRenderedDomRef(oElement);
-		}else {
+		} else  {
 			return null;
 		}
 
@@ -280,7 +306,7 @@ sap.ui.define([
 	 * So the <code>Form</code> must not have an own title.
 	 * @param {string} sTitleID <code>Title</code> control ID
 	 * @private
-	 * @return {sap.ui.layout.form.Form} Reference to <code>this</code> to allow method chaining
+	 * @return {this} Reference to <code>this</code> to allow method chaining
 	 */
 	Form.prototype._suggestTitleId = function (sTitleID) {
 
@@ -292,6 +318,24 @@ sap.ui.define([
 		return this;
 
 	};
+
+	function _observeChanges(oChanges){
+
+		if (oChanges.name === "editable") {
+			_setEditable.call(this, oChanges.current, oChanges.old);
+		} else if (oChanges.name === "formContainers") {
+			_formContainerChanged.call(this, oChanges.mutation, oChanges.child);
+		}
+
+	}
+
+	function _formContainerChanged(sMutation, oFormContainer) {
+
+		if (sMutation === "insert") {
+			oFormContainer._setEditable(this.getEditable());
+		}
+
+	}
 
 	return Form;
 

@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -16,7 +16,7 @@ sap.ui.define([
 	 * @alias sap.ui.core.BlockLayerUtils
 	 * @static
 	 * @private
-	 * @sap-restricted sap.ui.core.Control
+	 * @ui5-restricted sap.ui.core.Control
 	 */
 	var BlockLayerUtils = {},
 		aPreventedEvents = ["focusin", "focusout", "keydown", "keypress", "keyup", "mousedown", "touchstart", "touchmove", "mouseup", "touchend", "click"],
@@ -38,7 +38,7 @@ sap.ui.define([
 	 * @param  {sap.ui.core.Control} oControl The specified control to block
 	 * @param  {string} sBlockedLayerId The block layer ID
 	 * @param  {string} sBlockedSection The block section ID
-	 * @returns {object|undefined} The block-state object containing the parent and block layer DOM or undefined if no control instance is provided.
+	 * @returns {object|undefined} The block-state object containing the parent and block layer DOM or <code>undefined</code> if no valid control instance is provided.
 	 *
 	 * @static
 	 * @private
@@ -60,7 +60,7 @@ sap.ui.define([
 				Log.warning("BlockLayer could not be rendered. The outer Control instance is not valid anymore or was not rendered yet.");
 				return;
 			}
-			//Check if DOM Element where the busy indicator is supposed to be placed can handle content
+			// Check if DOM Element where the busy indicator is supposed to be placed can handle content
 			sTag = oParentDomRef.tagName;
 
 			if (rForbiddenTags.test(sTag)) {
@@ -79,8 +79,11 @@ sap.ui.define([
 			//check if the control has static position, if this is the case we need to change it,
 			//because we relay on relative/absolute/fixed positioning
 			if (oBlockState.$parent.css('position') == 'static') {
-				oBlockState.originalPosition = 'static';
+				if (oParentDomRef.style && oParentDomRef.style.position === "static") {
+					oBlockState.originalPosition = 'static';
+				}
 				oBlockState.$parent.css('position', 'relative');
+				oBlockState.positionChanged = true;
 			}
 
 			fnHandleInteraction.call(oBlockState, true);
@@ -102,6 +105,9 @@ sap.ui.define([
 			// reset the position css attribute to its original value (only used for the value "static")
 			if (oBlockState.originalPosition) {
 				oBlockState.$parent.css('position', oBlockState.originalPosition);
+			} else if (oBlockState.positionChanged) {
+				// reset the position set to 'relative' by the BlockLayer itself
+				oBlockState.$parent.css('position', "");
 			}
 
 			// deregister handlers and :before and :after tabbable spans
@@ -118,11 +124,15 @@ sap.ui.define([
 	 * @private
 	 */
 	BlockLayerUtils.addAriaAttributes = function(oDOM) {
+		var oResourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.ui.core");
+
 		oDOM.setAttribute("role", "progressbar");
 		oDOM.setAttribute("aria-valuemin", "0");
 		oDOM.setAttribute("aria-valuemax", "100");
+		oDOM.setAttribute("aria-valuetext", oResourceBundle.getText("BUSY_VALUE_TEXT"));
 		oDOM.setAttribute("alt", "");
-		oDOM.setAttribute("tabIndex", "0");
+		oDOM.setAttribute("tabindex", "0");
+		oDOM.setAttribute("title", oResourceBundle.getText("BUSY_TEXT"));
 	};
 
 	/**
@@ -265,6 +275,7 @@ sap.ui.define([
 			var oBlockSpan = document.createElement("span");
 
 			oBlockSpan.setAttribute("tabindex", 0);
+			oBlockSpan.classList.add("sapUiBlockLayerTabbable");
 			oBlockSpan.addEventListener('focusin', fnRedirectFocus);
 
 			return oBlockSpan;
@@ -273,8 +284,8 @@ sap.ui.define([
 		/**
 		 * Create a tabbable span for the block section of the control with according focus handling.
 		 *
+		 * @param {object} oBlockSpan The span element's DOM node
 		 * @param {function} fnRedirectFocus Focus handling function
-		 * @returns {object} The span element's DOM node
 		 * @private
 		 */
 		function removeTabbable(oBlockSpan, fnRedirectFocus) {
@@ -286,6 +297,9 @@ sap.ui.define([
 
 		/**
 		 * Register event handler to suppress event within busy section
+		 *
+		 * @param {function} fnHandler The handler function
+		 * @returns {function[]} The suppress handlers
 		 */
 		function registerInteractionHandler(fnHandler) {
 			var aSuppressHandler = [],
@@ -301,13 +315,15 @@ sap.ui.define([
 				aSuppressHandler.push(EventTriggerHook.suppress(aPreventedEvents[i], oParentDOM, oBlockLayerDOM));
 			}
 			//for jQuery triggered events we also need the keydown handler
-			this.$blockLayer.bind('keydown', fnHandler);
+			this.$blockLayer.on('keydown', fnHandler);
 
 			return aSuppressHandler;
 		}
 
 		/**
 		 * Deregister event handler to suppress event within busy section
+		 *
+		 * @param {function} fnHandler The handler function
 		 */
 		function deregisterInteractionHandler(fnHandler) {
 			var i,
@@ -330,7 +346,7 @@ sap.ui.define([
 				}
 			}
 			if (oBlockLayerDOM) {
-				this.$blockLayer.unbind('keydown', fnHandler);
+				this.$blockLayer.off('keydown', fnHandler);
 			}
 		}
 	}

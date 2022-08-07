@@ -1,20 +1,17 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-/*global Promise */
-
 // Provides class sap.ui.core.ElementMetadata
 sap.ui.define([
-	'sap/ui/thirdparty/jquery',
 	'sap/base/Log',
 	'sap/base/util/ObjectPath',
 	'sap/ui/base/ManagedObjectMetadata',
 	'sap/ui/core/Renderer'
 ],
-	function(jQuery, Log, ObjectPath, ManagedObjectMetadata, Renderer) {
+	function(Log, ObjectPath, ManagedObjectMetadata, Renderer) {
 	"use strict";
 
 
@@ -22,14 +19,15 @@ sap.ui.define([
 	 * Creates a new metadata object for a UIElement subclass.
 	 *
 	 * @param {string} sClassName fully qualified name of the class that is described by this metadata object
-	 * @param {object} oStaticInfo static info to construct the metadata from
+	 * @param {object} oClassInfo static info to construct the metadata from
 	 *
 	 * @class
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @since 0.8.6
 	 * @alias sap.ui.core.ElementMetadata
 	 * @extends sap.ui.base.ManagedObjectMetadata
+	 * @public
 	 */
 	var ElementMetadata = function(sClassName, oClassInfo) {
 
@@ -39,6 +37,7 @@ sap.ui.define([
 
 	//chain the prototypes
 	ElementMetadata.prototype = Object.create(ManagedObjectMetadata.prototype);
+	ElementMetadata.prototype.constructor = ElementMetadata;
 
 	/**
 	 * Calculates a new id based on a prefix.
@@ -60,6 +59,8 @@ sap.ui.define([
 
 	/**
 	 * Determines the class name of the renderer for the described control class.
+	 *
+	 * @returns {string} The renderer name
 	 */
 	ElementMetadata.prototype.getRendererName = function() {
 		return this._sRendererName;
@@ -67,6 +68,9 @@ sap.ui.define([
 
 	/**
 	 * Retrieves the renderer for the described control class
+	 *
+	 * If no renderer exists <code>undefined</code> is returned
+	 * @returns {object|undefined} The renderer
 	 */
 	ElementMetadata.prototype.getRenderer = function() {
 
@@ -78,7 +82,7 @@ sap.ui.define([
 		var sRendererName = this.getRendererName();
 
 		if ( !sRendererName ) {
-			return;
+			return undefined;
 		}
 
 		// check if renderer class exists already, in case it was passed inplace,
@@ -95,8 +99,10 @@ sap.ui.define([
 				name: sRendererName
 			};
 		});
+
+		// Relevant for all controls that don't maintain the renderer module in their dependencies
 		this._oRenderer =
-			sap.ui.requireSync(sRendererName.replace(/\./g, "/"))
+			sap.ui.requireSync(sRendererName.replace(/\./g, "/")) // legacy-relevant
 			|| ObjectPath.get(sRendererName);
 
 		return this._oRenderer;
@@ -132,7 +138,7 @@ sap.ui.define([
 			}
 
 			// try to identify fully built renderers
-			if ( typeof vRenderer === "object" ) {
+			if ( typeof vRenderer === "object" && typeof vRenderer.render === "function" ) {
 				var oRenderer = ObjectPath.get(this.getRendererName());
 				if ( oRenderer === vRenderer ) {
 					// the given renderer has been exported globally already, it can be used without further action
@@ -152,18 +158,11 @@ sap.ui.define([
 				vRenderer = { render : vRenderer };
 			}
 
-			var oParent = this.getParent();
 			var oBaseRenderer;
 			if ( oParent instanceof ElementMetadata ) {
 				oBaseRenderer = oParent.getRenderer();
 			}
-			if (!oBaseRenderer) {
-				oBaseRenderer = Renderer;
-			}
-			var oRenderer = Object.create(oBaseRenderer);
-			jQuery.extend(oRenderer, vRenderer);
-			this._oRenderer = oRenderer;
-			ObjectPath.set(this.getRendererName(), oRenderer);
+			this._oRenderer = Renderer.extend.call(oBaseRenderer || Renderer, this.getRendererName(), vRenderer);
 		}
 	};
 
@@ -194,6 +193,7 @@ sap.ui.define([
 	}
 
 	Aggregation.prototype = Object.create(fnMetaFactoryAggregation.prototype);
+	Aggregation.prototype.constructor = Aggregation;
 	ElementMetadata.prototype.metaFactoryAggregation = Aggregation;
 
 	/**

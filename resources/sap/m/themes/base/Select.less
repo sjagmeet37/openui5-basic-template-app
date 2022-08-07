@@ -7,6 +7,130 @@
 /* commons styles                 */
 /* ------------------------------ */
 
+.sapMSltPicker-CTX {
+	.sapMSelectList {
+		.sapMSelectListRow {
+			height: auto;
+			display: flex;
+			box-sizing: border-box;
+			word-break: break-all;
+
+			.sapMSelectListFirstCell {
+				height: auto;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				display: block;
+				box-sizing: border-box;
+			}
+
+			.sapMSelectListLastCell {
+				display: block;
+				box-sizing: border-box
+			}
+
+			.sapMSelectListFirstCell,
+			.sapMSelectListLastCell {
+				padding-top: 0.75rem;
+				padding-bottom: 0.75rem;
+				&:empty {
+					height: 2.5rem;
+				}
+			}
+		}
+
+		&.sapMSelectListWrappedItems {
+			.sapMSelectListItem.sapMSelectListItemWithIcon,
+			.sapMSelectListRow.sapMSelectListItemWithIcon .sapMSelectListFirstCell {
+				position: relative;
+				padding-left: 2.25rem;
+				.sapMSelectListItemIcon {
+					position: absolute;
+					left: 1rem;
+				}
+			}
+
+			.sapMSelectListItem {
+				white-space: normal;
+				padding-top: 0.75rem;
+				padding-bottom: 0.75rem;
+				line-height: 1rem;
+				height: auto;
+				&:empty {
+					height: 2.5rem;
+				}
+			}
+
+			.sapMSelectListRow {
+				display: table-row;
+				.sapMSelectListFirstCell {
+					white-space: normal;
+				}
+
+				.sapMSelectListLastCell {
+					vertical-align: top;
+				}
+
+				.sapMSelectListCell{
+					display: table-cell;
+				}
+			}
+		}
+	}
+}
+
+// sets max-width of 600px to selectList, only when wrapItemsText property is false
+.sapMSltPicker-CTX:not(.sapMPickerWrappedItems){
+	max-width: 600px;
+	.sapMSelectList:not(.sapMSelectListWrappedItems) {
+		max-width: 600px;
+			.sapMSelectListRow {
+				max-width: 600px;
+		}
+	}
+}
+
+// defines the ratio of columns inside selectList, when text is truncated
+.sapMSltPicker-CTX .sapMSelectList:not(.sapMSelectListWrappedItems){
+	.sapMSelectListFirstCell {
+		width: 60%;
+	}
+	.sapMSelectListLastCell {
+		width: 40%;
+	}
+}
+
+// sets max-width of 100% to selectList, only when wrapItemsText property is true
+.sapMSltPicker-CTX.sapMDialogPhone {
+	max-width: 100%;
+	.sapMSelectList:not(.sapMSelectListWrappedItems) {
+		max-width: 100%;
+			.sapMSelectListRow {
+				max-width: 100%;
+		}
+	}
+}
+
+.sapUiSizeCompact .sapMSltPicker-CTX .sapMSelectList {
+	.sapMSelectListRow {
+		.sapMSelectListFirstCell,
+		.sapMSelectListLastCell {
+			padding-top: 0.5rem;
+			padding-bottom: 0.5rem;
+			&:empty {
+				height: 2rem;
+			}
+		}
+	}
+	&.sapMSelectListWrappedItems .sapMSelectListItem {
+		padding-top: 0.5rem;
+		padding-bottom: 0.5rem;
+		&:empty {
+			height: 2rem;
+		}
+	}
+}
+
 .sapMSlt,
 .sapMSlt > .sapMSltLabel {
 	box-sizing: border-box;
@@ -27,6 +151,15 @@
 .sapMSlt:not(.sapMSltDisabled) > .sapMSltLabel,
 .sapMSltIconOnly:not(.sapMSltDisabled) .sapMSltIcon {
 	cursor: pointer;
+}
+
+.sapMSlt.sapMSltReadonly {
+	border-color: @sapUiFieldReadOnlyBorderColor;
+	background: @sapUiFieldReadOnlyBackground;
+
+	.sapMSltArrow {
+		display: none;
+	}
 }
 
 .sapMSlt > .sapMSltLabel,
@@ -111,7 +244,6 @@
 	text-align: start;
 	-webkit-user-select: none;
 	-moz-user-select: none;
-	-ms-user-select: none;
 	line-height: 2.375rem;
 	color: @sapUiFieldTextColor;
 	font-style: normal;
@@ -134,9 +266,6 @@
 	line-height: 2.375rem;
 	padding: 0 0.4375rem;
 	color: @sapUiContentIconColor;
-
-	/* prevent IE to focus the icon (non-focusable element) */
-	pointer-events: none;
 }
 
 .sapMSltAutoAdjustedWidth .sapMSltIcon {
@@ -152,15 +281,6 @@
 /* ------------------------------ */
 /* arrow                          */
 /* ------------------------------ */
-
-/* TODO remove after 1.62 version */
-html[data-sap-ui-browser^="ie"] .sapMSltWithArrow .sapMSltArrow {
-	pointer-events: none;
-}
-
-html[data-sap-ui-browser^="ed"] .sapMSltWithArrow .sapMSltArrow {
-	pointer-events: auto;
-}
 
 .sapMSltArrow {
 	position: absolute;
@@ -300,95 +420,40 @@ html[data-sap-ui-browser^="ed"] .sapMSltWithArrow .sapMSltArrow {
 /* ------------------------------ */
 /* picker                         */
 /* ------------------------------ */
-@_sap_m_SltPicker_SubHeader_BarHeight: 2rem;
 
 div.sapMSltPicker {
 	border: none;
 	box-shadow: @sapUiShadowLevel1;
-	.sapMDialogSubHeader,
-	.sapMPopoverSubHeader {
-		/*
-			using height:0 instead of display:none becase of the calculations
-			for the PopOver's content, since window.getComputedStyle gets the height,
-			even though you have specified display:none.
-			This results in a wrong calculation for the height of the content.
-		*/
-		height: 0;
-		.sapMSltPickerValueState.sapMSltPickerNoneState {
+
+	&.sapUiPopupWithPadding .sapMDialogScrollCont.sapMDialogStretchContent {
+		height: 100%;
+	}
+
+	.sapMSltPickerValueState {
+		padding: 0.5625rem 1rem;
+		color: @sapUiBaseText;
+		font-size: @sapMFontSmallSize;
+		box-shadow: inset 0 -0.0625rem @sapUiPageHeaderBorderColor;
+
+		&.sapMSltPickerErrorState {
+			background: @sapUiErrorBG;
+		}
+
+		&.sapMSltPickerSuccessState {
+			background: @sapUiSuccessBG;
+		}
+
+		&.sapMSltPickerWarningState {
+			background: @sapUiWarningBG;
+		}
+
+		&.sapMSltPickerInformationState {
+			background: @sapUiInformationBG;
+		}
+
+		&.sapMSltPickerNoneState {
 			display: none;
 		}
-	}
-
-	&.sapMDialogWithSubHeader {
-		//the picker has a default subheader that is hidden by default
-		padding-top: @_sap_m_Dialog_BarHeight;
-	}
-
-	&.sapMDialogWithSubHeader.sapMSltPickerWithSubHeader {
-		padding-top: @_sap_m_Dialog_BarHeight + @_sap_m_SltPicker_SubHeader_BarHeight;
-	}
-
-	&.sapMSltPickerWithSubHeader {
-		.sapMPopoverSubHeader,
-		.sapMDialogSubHeader {
-			height: @_sap_m_SltPicker_SubHeader_BarHeight;
-
-			.sapMSltPickerValueState {
-				padding-left: 1rem;
-				height: @_sap_m_SltPicker_SubHeader_BarHeight;
-				line-height: @_sap_m_SltPicker_SubHeader_BarHeight;
-
-				.sapMSltPickerSubHeaderTitle {
-					color: @sapUiBaseText;
-					font-size: @sapMFontSmallSize;
-				}
-
-				&.sapMSltPickerErrorState {
-					background: @sapUiErrorBG;
-				}
-
-				&.sapMSltPickerSuccessState {
-					background: @sapUiSuccessBG;
-				}
-
-				&.sapMSltPickerWarningState {
-					background: @sapUiWarningBG;
-				}
-
-				&.sapMSltPickerInformationState {
-					background: @sapUiInformationBG;
-				}
-
-				.sapMSltPickerSubHeaderTitle.sapMTitle {
-					padding-left: 0.75rem;
-					font-size: @sapMFontSmallSize;
-					line-height: 1.875rem;
-				}
-			}
-		}
-	}
-}
-
-/* Compact size */
-.sapUiSizeCompact div.sapMSltPicker.sapMDialogWithSubHeader {
-	padding-top: @_sap_m_Dialog_BarCompactHeight;
-
-	.sapMDialogSubHeader,
-	.sapMPopoverSubHeader {
-		/*
-			using height:0 instead of display:none becase of the calculations
-			for the PopOver's content, since window.getComputedStyle gets the height,
-			even though you have specified display:none.
-			This results in a wrong calculation for the height of the content.
-		*/
-		height: 0;
-		.sapMSltPickerValueState.sapMSltPickerNoneState {
-			display: none;
-		}
-	}
-
-	&.sapMSltPickerWithSubHeader {
-		padding-top: @_sap_m_Dialog_BarCompactHeight + @_sap_m_SltPicker_SubHeader_BarHeight;
 	}
 }
 
@@ -399,6 +464,15 @@ div.sapMSltPicker {
 
 div.sapMSltPicker .sapMDialogScrollCont {
 	padding: 0;
+}
+
+.sap-phone {
+	.sapMSelectListTableLayout {
+		display: inline;
+	}
+	.sapMSelectListWrappedItems.sapMSelectListTableLayout {
+		display: table;
+	}
 }
 
 /* ================================================================================== */
@@ -417,8 +491,8 @@ div.sapMSltPicker .sapMDialogScrollCont {
 	padding-left: 0.5rem;
 }
 
-.sapUiSizeCompact .sapMSltLabel,
-.sapUiSizeCompact .sapMSltArrow {
+.sapUiSizeCompact .sapMSlt > .sapMSltLabel,
+.sapUiSizeCompact .sapMSlt > .sapMSltArrow {
 	line-height: 1.5rem;
 }
 
@@ -506,4 +580,12 @@ div.sapMSltPicker .sapMDialogScrollCont {
 .sapUiSizeCondensed .sapUiTableCell .sapMSltLabelState,
 .sapUiSizeCondensed .sapUiTableCell .sapMSltArrowState {
 	line-height: 1.25rem;
+}
+
+/* hidden focus element */
+
+.sapMSltHiddenSelect {
+    width: 100%;
+    height: 100%;
+    border: none;
 }

@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -53,13 +53,13 @@ sap.ui.define([
 	 * @param {object} [mSettings] Initial settings for the new control
 	 *
 	 * @class
-	 * The <code>SimpleForm</code> provides an easy-to-use API to create simple forms.
-	 * Inside a <code>SimpleForm</code>, a <code>{@link sap.ui.layout.form.Form Form}</code> control is created along with its
-	 * <code>{@link sap.ui.layout.form.FormContainer FormContainers}</code> and <code>{@link sap.ui.layout.form.FormElement FormElements}</code>,
+	 * The <code>SimpleForm</code> control provides an easy-to-use API to create simple forms.
+	 * Inside a <code>SimpleForm</code> control, a <code>{@link sap.ui.layout.form.Form Form}</code> control is created along with its
+	 * <code>{@link sap.ui.layout.form.FormContainer FormContainer}</code> elements and <code>{@link sap.ui.layout.form.FormElement FormElement}</code> elements,
 	 * but the complexity in the API is not exposed to the user.
 	 * <ul>
-	 * <li>A new <code>Title</code> or <code>Toolbar</code> starts a new group (<code>{@link sap.ui.layout.form.FormContainer FormContainer}</code>) in the form.</li>
-	 * <li>A new <code>Label</code> starts a new row (<code>{@link sap.ui.layout.form.FormElement FormElement}</code>) in the form.</li>
+	 * <li>A new <code>sap.ui.core.Title</code> element or <code>Toolbar</code> control starts a new group (<code>{@link sap.ui.layout.form.FormContainer FormContainer}</code>) in the form.</li>
+	 * <li>A new <code>Label</code> control starts a new row (<code>{@link sap.ui.layout.form.FormElement FormElement}</code>) in the form.</li>
 	 * <li>All other controls will be assigned to the row (<code>{@link sap.ui.layout.form.FormElement FormElement}</code>) that started with the last label.</li>
 	 * </ul>
 	 * Use <code>LayoutData</code> to influence the layout for special cases in the Input/Display controls.
@@ -67,7 +67,7 @@ sap.ui.define([
 	 * <b>Note:</b> If a more complex form is needed, use the <code>{@link sap.ui.layout.form.Form Form}</code> control instead.
 	 *
 	 * @extends sap.ui.core.Control
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -131,10 +131,12 @@ sap.ui.define([
 			/**
 			 * The <code>FormLayout</code> that is used to render the <code>SimpleForm</code>.
 			 *
-			 * We recommend using the <code>ResponsiveGridLayout</code> for rendering a <code>SimpleForm</code>,
+			 * We recommend using the <code>ColumnLayout</code> for rendering a <code>SimpleForm</code>,
 			 * as its responsiveness uses the space available in the best way possible.
 			 *
 			 * <b>Note</b> If possible, set the <code>layout</code> before adding content to prevent calculations for the default layout.
+			 *
+			 * <b>Note</b> The <code>ResponsiveLayout</code> has been deprecated and must no longer be used. For compatibility reasons the default could not be changed.
 			 */
 			layout : {type : "sap.ui.layout.form.SimpleFormLayout", group : "Misc", defaultValue : SimpleFormLayout.ResponsiveLayout},
 
@@ -305,23 +307,23 @@ sap.ui.define([
 			/**
 			 * The content of the form is structured in the following way:
 			 * <ul>
-			 * <li>Add a <code>Title</code> or <code>Toolbar</code> control to start a new group (<code>{@link sap.ui.layout.form.FormContainer FormContainer}</code>).</li>
+			 * <li>Add a <code>sap.ui.core.Title</code> element or <code>Toolbar</code> control to start a new group (<code>{@link sap.ui.layout.form.FormContainer FormContainer}</code>).</li>
 			 * <li>Add a <code>Label</code> control to start a new row (<code>{@link sap.ui.layout.form.FormElement FormElement}</code>).</li>
 			 * <li>Add controls as input fields, text fields or other as needed.</li>
 			 * <li>Use <code>LayoutData</code> to influence the layout for special cases in the single controls.
-			 * For example, if a <code>ResponsiveLayout</code> is used as a layout,
-			 * the form content is weighted using weight 3 for the labels and weight 5 for the fields part.
-			 * By default the label column is 192 pixels wide.
-			 * If your input controls should influence their width, you can add <code>sap.ui.layout.ResponsiveFlowLayoutData</code>
+			 * For example, if a <code>ColumnLayout</code> is used as a layout,
+			 * the form content is weighted using 4 cells for the labels and 8 cells for the field part, for large size.
+			 * If there is only little space, the labels are above the fields and each field uses 12 cells.
+			 * If your input controls should influence their width, you can add <code>sap.ui.layout.ColumnElementData</code>
 			 * to them via <code>setLayoutData</code> method.
-			 * Ensure that the sum of the weights in the <code>ResponsiveFlowLayoutData</code> is not more than 5,
+			 * Ensure that the sum of the weights in the <code>ColumnElementData</code> is not more than 12,
 			 * as this is the total width of the input control part of each form row.</li>
 			 * </ul>
-			 * Example for a row where the <code>Input</code> weight 4 and the second <code>Input</code> weight 1 (using <code>ResponsiveLayout</code>):
+			 * Example for a row where the <code>Input</code> uses 6 cells and the second <code>Input</code> uses 2 cells (using <code>ColumnElementData</code>):
 			 * <pre>
 			 * new sap.m.Label({text:"Label"});
-			 * new sap.m.Input({value:"Weight 4", layoutData: new sap.ui.layout.ResponsiveFlowLayoutData({weight:4})}),
-			 * new sap.m.Input({value:"Weight 1", layoutData: new sap.ui.layout.ResponsiveFlowLayoutData({weight:1})}),
+			 * new sap.m.Input({value:"6 cells", layoutData: new sap.ui.layout.ColumnElementData({cellsLarge: 6, cellsSmall: 8})}),
+			 * new sap.m.Input({value:"2 cells", layoutData: new sap.ui.layout.ColumnElementData({cellsLarge: 2, cellsSmall: 4})}),
 			 * </pre>
 			 *
 			 * For example, if a <code>ResponsiveGridLayout</code> is used as a layout, there are 12 cells in one row.
@@ -410,7 +412,7 @@ sap.ui.define([
 			var oSimpleForm = this.getParent();
 			if (oSimpleForm) {
 				return oSimpleForm.getAriaLabelledBy();
-			}else {
+			} else  {
 				return null;
 			}
 		};
@@ -1483,8 +1485,11 @@ sap.ui.define([
 
 	function _checkLayoutDataReady() {
 
-		if (this._bResponsiveLayoutRequested || this._bGridLayoutRequested ||
-				this._bResponsiveGridLayoutRequested || this._bColumnLayoutRequested) {
+		var sLayout = this.getLayout();
+		if ((sLayout === SimpleFormLayout.ResponsiveLayout && this._bResponsiveLayoutRequested) ||
+				(sLayout === SimpleFormLayout.GridLayout && this._bGridLayoutRequested) ||
+				(sLayout === SimpleFormLayout.ResponsiveGridLayout && this._bResponsiveGridLayoutRequested) ||
+				(sLayout === SimpleFormLayout.ColumnLayout && this._bColumnLayoutRequested)) {
 			// LayoutData waiting to be loaded -> are set after they are loaded
 			return false;
 		}
@@ -1983,7 +1988,7 @@ sap.ui.define([
 	 * So the <code>SimpleForm</code> must not have an own title.
 	 * @param {string} sTitleID <code>Title</code> control ID
 	 * @private
-	 * @return {sap.ui.layout.form.SimpleForm} Reference to <code>this</code> to allow method chaining
+	 * @return {this} Reference to <code>this</code> to allow method chaining
 	 */
 	SimpleForm.prototype._suggestTitleId = function (sTitleID) {
 

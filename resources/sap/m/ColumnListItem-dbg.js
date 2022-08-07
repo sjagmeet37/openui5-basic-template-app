@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -42,7 +42,7 @@ sap.ui.define([
 	 * @extends sap.m.ListItemBase
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -87,11 +87,36 @@ sap.ui.define([
 			if (oEvent.srcControl === this || !jQuery(oEvent.target).is(":sapFocusable")) {
 				this.getParent().focus();
 			}
+		},
+
+		_onMouseEnter: function() {
+			var $this = jQuery(this),
+				$parent = $this.prev();
+
+			if (!$parent.length || !$parent.hasClass("sapMLIBHoverable") || $parent.hasClass("sapMPopinHovered")) {
+				return;
+			}
+
+			$parent.addClass("sapMPopinHovered");
+		},
+
+		_onMouseLeave: function() {
+			var $this = jQuery(this),
+				$parent = $this.prev();
+
+			if (!$parent.length || !$parent.hasClass("sapMLIBHoverable") || !$parent.hasClass("sapMPopinHovered")) {
+				return;
+			}
+
+			$parent.removeClass("sapMPopinHovered");
 		}
 	});
 
 	// defines tag name
 	ColumnListItem.prototype.TagName = "tr";
+
+	// enable the ACC announcement for "not selected"
+	ColumnListItem.prototype._bAnnounceNotSelected = true;
 
 	ColumnListItem.prototype.init = function() {
 		ListItemBase.prototype.init.call(this);
@@ -102,6 +127,11 @@ sap.ui.define([
 	ColumnListItem.prototype.onAfterRendering = function() {
 		ListItemBase.prototype.onAfterRendering.call(this);
 		this._checkTypeColumn();
+
+		var oPopin = this.hasPopin();
+		if (oPopin) {
+			this.$Popin().on("mouseenter", oPopin._onMouseEnter).on("mouseleave", oPopin._onMouseLeave);
+		}
 	};
 
 	ColumnListItem.prototype.exit = function() {
@@ -143,7 +173,7 @@ sap.ui.define([
 		if (!this._oPopin) {
 			this._oPopin = new TablePopin({
 				id: this.getId() + "-sub"
-			}).addEventDelegate({
+			}).addDelegate({
 				// handle the events of pop-in
 				ontouchstart: this.ontouchstart,
 				ontouchmove: this.ontouchmove,
@@ -209,11 +239,17 @@ sap.ui.define([
 			return;
 		}
 
-		var sAnnouncement = "",
+		var aOutput = [],
 			aCells = this.getCells(),
 			aColumns = oTable.getColumns(true);
 
-		aColumns.forEach(function(oColumn) {
+		aColumns.sort(function(oCol1, oCol2) {
+			var iCol1Index = oCol1.getIndex(), iCol2Index = oCol2.getIndex(), iIndexDiff = iCol1Index - iCol2Index;
+			if (iIndexDiff == 0) { return 0; }
+		    if (iCol1Index < 0) { return 1; }
+		    if (iCol2Index < 0) { return -1; }
+		    return iIndexDiff;
+		}).forEach(function(oColumn) {
 			var oCell = aCells[oColumn.getInitialOrder()];
 			if (!oCell || !oColumn.getVisible() || (oColumn.isHidden() && !oColumn.isPopin())) {
 				return;
@@ -221,13 +257,13 @@ sap.ui.define([
 
 			var oHeader = oColumn.getHeader();
 			if (oHeader && oHeader.getVisible()) {
-				sAnnouncement += ListItemBase.getAccessibilityText(oHeader) + " ";
+				aOutput.push(ListItemBase.getAccessibilityText(oHeader) + " " + ListItemBase.getAccessibilityText(oCell, true));
+			} else {
+				aOutput.push(ListItemBase.getAccessibilityText(oCell, true));
 			}
-
-			sAnnouncement += ListItemBase.getAccessibilityText(oCell, true) + " ";
 		});
 
-		return sAnnouncement;
+		return aOutput.join(" . ").trim();
 	};
 
 	// update the aria-selected for the cells
@@ -241,11 +277,14 @@ sap.ui.define([
 	};
 
 	ColumnListItem.prototype.onfocusin = function(oEvent) {
-		if (oEvent.isMarked() || oEvent.srcControl !== this) {
+		if (oEvent.isMarked()) {
 			return;
 		}
 
-		this.$().children(".sapMListTblCellDup").find(":sapTabbable").attr("tabindex", -1);
+		if (oEvent.srcControl === this) {
+			this.$().children(".sapMListTblCellDup").find(":sapTabbable").attr("tabindex", -1);
+		}
+
 		ListItemBase.prototype.onfocusin.apply(this, arguments);
 	};
 

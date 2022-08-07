@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -26,7 +26,7 @@ sap.ui.define([
 	 * @extends sap.ui.core.Element
 	 *
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 *
 	 * @constructor
 	 * @public
@@ -42,7 +42,17 @@ sap.ui.define([
 			/**
 			 * If set to <code>false</code>, the <code>FormElement</code> is not rendered.
 			 */
-			visible : {type : "boolean", group : "Misc", defaultValue : true}
+			visible : {type : "boolean", group : "Misc", defaultValue : true},
+
+			/**
+			 * Internal property for the <code>editable</code> state of the internal <code>FormElement</code>.
+			 */
+			_editable: {
+				type: "boolean",
+				group: "Misc",
+				defaultValue: false,
+				visibility: "hidden"
+			}
 		},
 		defaultAggregation : "fields",
 		aggregations : {
@@ -130,22 +140,7 @@ sap.ui.define([
 		this.setAggregation("label", vAny);
 		var oLabel = vAny;
 		if (typeof oLabel === "string") {
-			if (!this._oLabel) {
-				this._oLabel = library.form.FormHelper.createLabel(oLabel, this.getId() + "-label");
-				this.setAggregation("_label", this._oLabel, true); // use Aggregation to allow model inheritance
-				this._oLabel.disableRequiredChangeCheck(true);
-				if (this._oLabel.isRequired) {
-					this._oLabel.isRequired = _labelIsRequired;
-				}
-				if (this._oLabel.isDisplayOnly) {
-					this._oLabel.isDisplayOnly = _labelIsDisplayOnly;
-				}
-				if (this._oLabel.setWrapping) {
-					this._oLabel.setWrapping(true);
-				}
-			} else {
-				this._oLabel.setText(oLabel);
-			}
+			this._setInternalLabel(oLabel);
 		} else {
 			if (this._oLabel) {
 				this._oLabel.destroy();
@@ -164,11 +159,34 @@ sap.ui.define([
 				oLabel._sapuiIsWrapping = oLabel.isWrapping;
 				oLabel.isWrapping = _labelIsWrapping;
 			}
+
+			_updateLabelFor.call(this);
+		}
+
+		return this;
+
+	};
+
+	FormElement.prototype._setInternalLabel = function(sText) {
+
+		if (!this._oLabel) {
+			this._oLabel = library.form.FormHelper.createLabel(sText, this.getId() + "-label");
+			this.setAggregation("_label", this._oLabel, true); // use Aggregation to allow model inheritance
+			this._oLabel.disableRequiredChangeCheck(true);
+			if (this._oLabel.isRequired) {
+				this._oLabel.isRequired = _labelIsRequired;
+			}
+			if (this._oLabel.isDisplayOnly) {
+				this._oLabel.isDisplayOnly = _labelIsDisplayOnly;
+			}
+			if (this._oLabel.setWrapping) {
+				this._oLabel.setWrapping(true);
+			}
+		} else {
+			this._oLabel.setText(sText);
 		}
 
 		_updateLabelFor.call(this);
-
-		return this;
 
 	};
 
@@ -253,8 +271,6 @@ sap.ui.define([
 
 		}
 
-		return mAriaProps;
-
 	};
 
 	/*
@@ -284,21 +300,44 @@ sap.ui.define([
 
 		if (oContainer && oContainer.getElementRenderedDomRef) {
 			return oContainer.getElementRenderedDomRef(that);
-		}else {
+		} else  {
 			return null;
 		}
 
 	};
 
 	/**
-	 * Labels inside of a Form must be invalidated if "editable" changed on Form
-	 * @private
+	 * Sets the editable state of the <code>FormElement</code>.
+	 *
+	 * This must only be called from the <code>Form</code> and it's <code>FormContainers</code>.
+	 *
+	 * Labels inside of a <code>Form</code> must be invalidated if <code>editable</code> changed on <code>Form</code>.
+	 *
+	 * @param {boolean} bEditable Editable state of the <code>Form</code>
+	 * @protected
+	 * @restricted sap.ui.layout.form.FormContainer
+	 * @since 1.74.0
 	 */
-	FormElement.prototype.invalidateLabel = function(){
+	FormElement.prototype._setEditable = function(bEditable) {
+
+		var bOldEditable = this.getProperty("_editable");
+		this.setProperty("_editable", bEditable, true); // do not invalidate whole FormElement
+
+		if (bEditable !== bOldEditable) {
+			this.invalidateLabel();
+		}
+
+	};
+
+	/**
+	 * Labels inside of a Form must be invalidated if "editable" changed on Form
+	 * @protected
+	 */
+	FormElement.prototype.invalidateLabel = function(){ // is overwritten in sap.ui.comp.smartform.GroupElement
 
 		var oLabel = this.getLabelControl();
 
-		if (oLabel) {
+		if (oLabel && oLabel.getDomRef()) { // only if already rendered.
 			oLabel.invalidate();
 		}
 
@@ -321,6 +360,20 @@ sap.ui.define([
 
 	};
 
+	/**
+	 * Determines what fields must be rendered.
+	 *
+	 * @returns {sap.ui.core.Control[]} Array of fields to be rendered
+	 * @private
+	 * @ui5-restricted sap.ui.layout.form.Form
+	 * @since 1.74.0
+	 */
+	FormElement.prototype.getFieldsForRendering = function(){
+
+		return this.getFields();
+
+	};
+
 	/*
 	 * handles change of FormElement itself and content controls
 	 * @private
@@ -330,7 +383,7 @@ sap.ui.define([
 		if (oChanges.object == this) {
 			// it's the FormElement
 			if (oChanges.name == "fields") {
-				_fieldsChanged.call(this, oChanges);
+				_fieldChanged.call(this, oChanges.child, oChanges.mutation);
 			}
 		} else {
 			// it's some content control
@@ -340,20 +393,6 @@ sap.ui.define([
 	};
 
 	// *** Private helper functions ***
-
-	function _fieldsChanged(oChanges) {
-
-			if (oChanges.child) {
-				_fieldChanged.call(this, oChanges.child, oChanges.mutation);
-			} else if (oChanges.children) {
-				for (var i = 0; i < oChanges.chlidren.length; i++) {
-					_fieldChanged.call(this, oChanges.children[i], oChanges.mutation);
-				}
-			}
-
-		_updateLabelFor.call(this);
-
-	}
 
 	function _fieldChanged(oField, sMutation) {
 
@@ -366,11 +405,13 @@ sap.ui.define([
 			_detachDelegate.call(this, oField);
 		}
 
+		_updateLabelFor.call(this);
+
 	}
 
 	function _controlChanged(oChanges) {
 
-		if (oChanges.name == "required") {
+		if (oChanges.name == "required" || oChanges.name == "editable") {
 			this.invalidateLabel();
 		}
 
@@ -415,15 +456,7 @@ sap.ui.define([
 			}
 
 			var oFormElement = this.getParent();
-			var oFormContainer = oFormElement.getParent();
-
-			if (oFormContainer) {
-				var oForm = oFormContainer.getParent();
-
-				if (oForm) {
-					return !oForm.getEditable();
-				}
-			}
+			return !oFormElement.getProperty("_editable");
 		}
 
 		return false;
@@ -467,10 +500,17 @@ sap.ui.define([
 
 		oField.addDelegate(this._oFieldDelegate);
 
-		if (!this._bNoObserverChange && oField.getMetadata().getProperty("required")) {
-			this._oObserver.observe(oField, {
-				properties: ["required"]
-			});
+		if (!this._bNoObserverChange) {
+			if (oField.getMetadata().getProperty("required")) {
+				this._oObserver.observe(oField, {
+					properties: ["required"]
+				});
+			}
+			if (oField.getMetadata().getProperty("editable")) {
+				this._oObserver.observe(oField, {
+					properties: ["editable"]
+				});
+			}
 		}
 
 	}

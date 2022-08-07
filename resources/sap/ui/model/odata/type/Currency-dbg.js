@@ -1,112 +1,87 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides an OData Currency type which extends sap.ui.model.type.Currency by currency customizing
 sap.ui.define([
-	"sap/ui/model/ParseException",
-	"sap/ui/model/ValidateException",
+	"./UnitMixin",
 	"sap/ui/model/type/Currency"
-], function (ParseException, ValidateException, BaseCurrency) {
+], function (applyUnitMixin, BaseCurrency) {
 	"use strict";
-	/*global Map */
-
-	var mCustomizing2CustomCurrencies = new Map(),
-		rDecimal = /\.(\d+)$/;
-
-	/**
-	 * Fetches a text from the message bundle and formats it using the parameters.
-	 *
-	 * @param {string} sKey
-	 *   The message key
-	 * @param {any[]} aParams
-	 *   The message parameters
-	 * @returns {string}
-	 *   The message
-	 */
-	function getText(sKey, aParams) {
-		return sap.ui.getCore().getLibraryResourceBundle().getText(sKey, aParams);
-	}
 
 	/**
 	 * Constructor for a <code>Currency</code> composite type.
 	 *
 	 * @param {object} [oFormatOptions]
 	 *   See parameter <code>oFormatOptions</code> of
-	 *   {@link sap.ui.model.type.Currency#constructor}. Format options are immutable, that is, they
-	 *   can only be set once on construction.
+	 *   {@link sap.ui.model.type.Currency#constructor}. Format options are immutable, that is,
+	 *   they can only be set once on construction. Format options that are not supported or have a
+	 *   different default are listed below. If the format option <code>showMeasure</code> is set to
+	 *   <code>false</code>, model messages for the currency code are not propagated to the control
+	 *   if the corresponding binding supports the feature of ignoring messages, see
+	 *   {@link sap.ui.model.Binding#supportsIgnoreMessages}, and the corresponding binding
+	 *   parameter is not set manually.
 	 * @param {object} [oFormatOptions.customCurrencies]
 	 *   Not supported; the type derives this from its currency customizing part.
 	 * @param {boolean} [oFormatOptions.parseAsString=true]
 	 *   Whether the amount is parsed to a string; set to <code>false</code> if the amount's
 	 *   underlying type is represented as a <code>number</code>, for example
 	 *   {@link sap.ui.model.odata.type.Int32}
-	 * @param {object} [oConstraints] Not supported
+	 * @param {boolean} [oFormatOptions.unitOptional]
+	 *   Whether the amount is parsed if no currency is entered; defaults to <code>true</code> if
+	 *   neither <code>showMeasure</code> nor <code>showNumber</code> is set to a falsy value,
+	 *   otherwise defaults to <code>false</code>
+	 * @param {any} [oFormatOptions.emptyString=0]
+	 *   Defines how an empty string is parsed into the amount. With the default value
+	 *   <code>0</code> the amount becomes <code>0</code> when an empty string is parsed.
+	 * @param {boolean} [oFormatOptions.preserveDecimals=true]
+	 *   By default decimals are preserved, unless <code>oFormatOptions.style</code> is given as
+	 *   "short" or "long"; since 1.89.0
+	 * @param {object} [oConstraints]
+	 *   Only the 'skipDecimalsValidation' constraint is supported. Constraints are immutable,
+	 *   that is, they can only be set once on construction.
+	 * @param {boolean} [oConstraints.skipDecimalsValidation=false]
+	 *   Whether to skip validation of the number of decimals based on the code list customizing;
+	 *   since 1.93.0
 	 * @throws {Error} If called with more parameters than <code>oFormatOptions</code> or if the
 	 *   format option <code>customCurrencies</code> is set
 	 *
 	 * @alias sap.ui.model.odata.type.Currency
 	 * @author SAP SE
 	 * @class This class represents the <code>Currency</code> composite type with the parts amount,
-	 * currency, and currency customizing. The amount part is formatted according to the customizing
-	 * for the currency. Use the result of the promise returned by
-	 * {@link sap.ui.model.odata.v4.ODataMetaModel#requestCurrencyCodes} as currency customizing
-	 * part. If no currency customizing is available, UI5's default formatting applies. The type may
-	 * only be used for amount and currency parts from a {@link sap.ui.model.odata.v4.ODataModel}.
+	 * currency, and currency customizing. The type may only be used for amount and currency parts
+	 * from a {@link sap.ui.model.odata.v4.ODataModel} or a
+	 * {@link sap.ui.model.odata.v2.ODataModel}. The amount part is formatted according to the
+	 * customizing for the currency. Use the result of the promise returned by
+	 * {@link sap.ui.model.odata.v4.ODataMetaModel#requestCurrencyCodes} for OData V4 or by
+	 * {@link sap.ui.model.odata.ODataMetaModel#requestCurrencyCodes} for OData V2 as currency
+	 * customizing part. If no currency customizing is available, UI5's default formatting applies.
 	 * @extends sap.ui.model.type.Currency
 	 * @public
 	 * @since 1.63.0
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 */
 	var Currency = BaseCurrency.extend("sap.ui.model.odata.type.Currency", {
-		constructor : function (oFormatOptions, oConstraints, aDynamicFormatOptionNames) {
-			if (oFormatOptions && oFormatOptions["customCurrencies"]) {
-				throw new Error("Format option customCurrencies is not supported");
-			}
-
-			if (oConstraints) {
-				throw new Error("Constraints not supported");
-			}
-
-			if (arguments.length > 2) {
-				throw new Error("Only the parameter oFormatOptions is supported");
-			}
-
-			// Note: The format option 'parseAsString' is always set to true, so that the base type
-			// always parses to a string and we can check the result.
-			this.bParseAsString = !oFormatOptions || !("parseAsString" in oFormatOptions)
-				|| oFormatOptions.parseAsString;
-			oFormatOptions = Object.assign({}, oFormatOptions, {parseAsString : true});
-
-			BaseCurrency.call(this, oFormatOptions, oConstraints);
-
-			this.bParseWithValues = true;
-
-			// must not overwrite setConstraints and setFormatOptions on prototype as they are
-			// called in SimpleType constructor
-			this.setConstraints = function () {
-				throw new Error("Constraints not supported");
-			};
-			this.setFormatOptions = function () {
-				throw new Error("Format options are immutable");
-			};
-			this.mCustomCurrencies = undefined;
+		constructor : function (oFormatOptions, oConstraints) {
+			this._applyUnitMixin.apply(this, arguments);
 		}
 	});
+
+	applyUnitMixin(Currency.prototype, BaseCurrency, "customCurrencies", "Currency");
 
 	/**
 	 * Formats the given values of the parts of the <code>Currency</code> composite type to the
 	 * given target type.
 	 *
 	 * @param {any[]} aValues
-	 *   Array of part values to be formatted; contains amount, currency, currency customizing in
-	 *   this order. The first call to this method where all parts are set determines the currency
-	 *   customizing; subsequent calls use this customizing, so that the corresponding part may be
-	 *   omitted. Changes to the currency customizing part after this first method call are not
-	 *   considered: The currency customizing for this <code>Currency</code> instance remains
-	 *   unchanged.
+	 *   Array of part values to be formatted; contains in the following order: amount, currency,
+	 *   currency customizing. The first call to this method where all parts are set determines the
+	 *   currency customizing; subsequent calls use this customizing, so that the corresponding
+	 *   part may be omitted. Changes to the currency customizing part after this first method call
+	 *   are not considered: The currency customizing for this <code>Currency</code> instance
+	 *   remains unchanged.
 	 * @param {string} sTargetType
 	 *   The target type; must be "string" or a type with "string" as its
 	 *   {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
@@ -118,52 +93,19 @@ sap.ui.define([
 	 * @throws {sap.ui.model.FormatException}
 	 *   If <code>sTargetType</code> is unsupported
 	 *
+	 * @function
+	 * @name sap.ui.model.odata.type.Currency#formatValue
 	 * @public
 	 * @since 1.63.0
 	 */
-	Currency.prototype.formatValue = function (aValues, sTargetType) {
-		var that = this;
 
-		if (this.mCustomCurrencies === undefined && aValues && aValues[2] !== undefined) {
-			if (aValues[2] === null) { // no currency customizing available
-				this.mCustomCurrencies = null;
-			} else {
-				this.mCustomCurrencies = mCustomizing2CustomCurrencies.get(aValues[2]);
-				if (!this.mCustomCurrencies) {
-					this.mCustomCurrencies = {};
-					Object.keys(aValues[2]).forEach(function (sKey) {
-						that.mCustomCurrencies[sKey] = {
-							decimals : aValues[2][sKey].UnitSpecificScale,
-							isoCode : aValues[2][sKey].StandardCode
-						};
-					});
-					mCustomizing2CustomCurrencies.set(aValues[2], this.mCustomCurrencies);
-				}
-				BaseCurrency.prototype.setFormatOptions.call(this,
-					Object.assign({customCurrencies : this.mCustomCurrencies},
-						this.oFormatOptions));
-			}
-		}
-
-		// composite binding calls formatValue several times, where some parts are not yet available
-		if (!aValues || aValues[0] === undefined || aValues[1] === undefined
-			|| this.mCustomCurrencies === undefined && aValues[2] === undefined) {
-			return null;
-		}
-
-		return BaseCurrency.prototype.formatValue.call(this, aValues.slice(0, 2), sTargetType);
-	};
-
-	/**
-	 * @see sap.ui.base.Object#getInterface
-	 *
-	 * @returns {object} this
-	 *
-	 * @public
-	 * @since 1.63.0
-	 */
-	Currency.prototype.getInterface = function () {
-		return this;
+	// @override
+	// @see sap.ui.model.odata.type.UnitMixin#getCustomUnitForKey
+	Currency.prototype.getCustomUnitForKey = function (mCustomizing, sKey) {
+		return {
+			decimals : mCustomizing[sKey].UnitSpecificScale,
+			isoCode : mCustomizing[sKey].StandardCode
+		};
 	};
 
 	/**
@@ -189,8 +131,8 @@ sap.ui.define([
 	 *   with "string" as its
 	 *   {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
 	 *   See {@link sap.ui.model.odata.type} for more information.
-	 * @param {any[]} aCurrentValues
-	 *   The current values of all binding parts
+	 * @param {any[]} [aCurrentValues]
+	 *   Not used
 	 * @returns {any[]}
 	 *   An array containing amount and currency in this order. Both, amount and currency, are
 	 *   string values unless the format option <code>parseAsString</code> is <code>false</code>; in
@@ -199,58 +141,29 @@ sap.ui.define([
 	 *   If {@link #formatValue} has not yet been called with a currency customizing part or
 	 *   if <code>sSourceType</code> is unsupported or if the given string cannot be parsed
 	 *
+	 * @function
+	 * @name sap.ui.model.odata.type.Currency#parseValue
 	 * @public
 	 * @see sap.ui.model.type.Currency#parseValue
 	 * @since 1.63.0
 	 */
-	Currency.prototype.parseValue = function (vValue, sSourceType, aCurrentValues) {
-		var sCurrency, iDecimals, iFractionDigits, aMatches, aValues;
-
-		if (this.mCustomCurrencies === undefined) {
-			throw new ParseException("Cannot parse value without currency customizing");
-		}
-
-		aValues = BaseCurrency.prototype.parseValue.apply(this, arguments);
-		sCurrency = aValues[1] || aCurrentValues[1];
-		// remove trailing decimal zeroes and separator
-		if (aValues[0].includes(".")) {
-			aValues[0] = aValues[0].replace(/0+$/, "").replace(/\.$/, "");
-		}
-		if (sCurrency && this.mCustomCurrencies) {
-			aMatches = rDecimal.exec(aValues[0]);
-			iFractionDigits = aMatches ? aMatches[1].length : 0;
-			// If the currency is not in mCustomCurrencies, the base class throws a ParseException.
-			iDecimals = this.mCustomCurrencies[sCurrency].decimals;
-			if (iFractionDigits > iDecimals) {
-				throw new ParseException(iDecimals
-					? getText("EnterNumberFraction", [iDecimals])
-					: getText("EnterInt"));
-			}
-		}
-		if (!this.bParseAsString) {
-			aValues[0] = Number(aValues[0]);
-		}
-
-		return aValues;
-	};
 
 	/**
-	 * Does nothing as the <code>Currency</code> type does not support constraints.
+	 * Validates whether the given value in model representation as returned by {@link #parseValue}
+	 * is valid and meets the conditions of this type's currency customizing.
 	 *
-	 * @param {string} vValue
-	 *   The value to be validated
-	 * @returns {void}
+	 * @param {any[]} aValues
+	 *   An array containing amount and currency in this order, see return value of
+	 *   {@link #parseValue}
 	 * @throws {sap.ui.model.ValidateException}
-	 *   If {@link #formatValue} has not yet been called with a currency customizing part
+	 *   If {@link #formatValue} has not yet been called with a customizing part or if the entered
+	 *   amount has too many decimals for its currency
 	 *
+	 * @function
+	 * @name sap.ui.model.odata.type.Currency#validateValue
 	 * @public
 	 * @since 1.63.0
 	 */
-	Currency.prototype.validateValue = function (vValue) {
-		if (this.mCustomCurrencies === undefined) {
-			throw new ValidateException("Cannot validate value without currency customizing");
-		}
-	};
 
 	return Currency;
 });

@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 sap.ui.define([
@@ -15,8 +15,13 @@ sap.ui.define([
 
 	/*global CollectGarbage */
 
+	// after CSS transform - scale down by 0.6: width=768, height=614.4
+	var DEFAULT_WIDTH = 1280;
+	var DEFAULT_HEIGHT = 1024;
+
 	var oFrameWindow = null,
 		$Frame = null,
+		$FrameContainer = null,
 		oFramePlugin = null,
 		oFrameUtils = null,
 		oFrameJQuery = null,
@@ -24,7 +29,8 @@ sap.ui.define([
 		bUi5Loaded = false,
 		oAutoWaiter = null,
 		FrameHashChanger = null,
-		sOpaLogLevel;
+		sOpaLogLevel,
+		bDisableHistoryOverride;
 
 	/*
 	 * INTERNALS
@@ -39,16 +45,19 @@ sap.ui.define([
 	}
 
 	function setFrameSize(sWidth, sHeight) {
-		// by default the frame is scaled down from 100% of the page in both dimensions
+		// by default the frame is scaled down to 60% of a fixed page size: 1280x1024
 		// user-defined dimensions should not be scaled
 		if (sWidth) {
 			$Frame.css("width", sWidth);
+			$FrameContainer.css("padding-left", sWidth);
 		} else {
+			$Frame.css("width", DEFAULT_WIDTH);
 			$Frame.addClass("default-scale-x");
 		}
 		if (sHeight) {
 			$Frame.css("height", sHeight);
 		} else {
+			$Frame.css("height", DEFAULT_HEIGHT);
 			$Frame.addClass("default-scale-y");
 		}
 		if (!sWidth && !sHeight) {
@@ -276,7 +285,9 @@ sap.ui.define([
 			oFramePlugin = new OpaPlugin();
 			oAutoWaiter = _autoWaiter;
 			oFrameUtils = QUnitUtils;
-			modifyIFrameNavigation(hasher, History, HashChanger);
+			if (!bDisableHistoryOverride) {
+				modifyIFrameNavigation(hasher, History, HashChanger);
+			}
 			FrameHashChanger = HashChanger;
 			afterModulesLoaded();
 		});
@@ -314,6 +325,7 @@ sap.ui.define([
 			CollectGarbage(); // eslint-disable-line
 		}
 		$Frame.remove();
+		$FrameContainer.remove();
 		oFrameJQuery = null;
 		oFramePlugin = null;
 		oFrameUtils = null;
@@ -339,13 +351,17 @@ sap.ui.define([
 			//invalidate the cache
 			$Frame = jQueryDOM("#" + options.frameId);
 
-			if (!$Frame.length) {
+			if ($Frame.length) {
+				$FrameContainer = jQueryDOM(".opaFrameContainer");
+			} else {
 				if (!options.source) {
 					Log.error("No source was given to launch the IFrame", this);
 				}
 				//invalidate other caches
+				$FrameContainer = jQueryDOM("<div class='opaFrameContainer'></div>");
 				$Frame = jQueryDOM('<IFrame id="' + options.frameId + '" class="opaFrame" src="' + options.source + '"></IFrame>');
-				jQueryDOM("body").append($Frame);
+				$FrameContainer.append($Frame);
+				jQueryDOM("body").append($FrameContainer);
 				setFrameSize(options.width, options.height);
 			}
 
@@ -355,6 +371,7 @@ sap.ui.define([
 				$Frame.on("load", handleFrameLoad);
 			}
 			sOpaLogLevel = options.opaLogLevel;
+			bDisableHistoryOverride = options.disableHistoryOverride;
 			return checkForUI5ScriptLoaded();
 		},
 		hasLaunched: function () {

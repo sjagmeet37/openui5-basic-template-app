@@ -1,36 +1,36 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 sap.ui.define([
-	"sap/ui/test/_OpaLogger",
-	"sap/ui/test/_opaCorePlugin",
-	"sap/base/util/ObjectPath"
-], function (_OpaLogger, _opaCorePlugin, ObjectPath) {
+	"sap/ui/core/Element",
+	"./WaiterBase"
+], function(Element, WaiterBase) {
 	"use strict";
 
-	var oHasPendingLogger = _OpaLogger.getLogger("sap.ui.test.autowaiter._navigationContainerWaiter#hasPending");
-
-	function hasNavigatingNavContainers () {
-		var sControlType = "sap.m.NavContainer";
-		var fnNavContainer = ObjectPath.get(sControlType);
-		// no Nav container has been loaded - continue
-		if (sap.ui.lazyRequire._isStub(sControlType) || !fnNavContainer) {
-			return false;
-		}
-
-		return _opaCorePlugin.getAllControls(fnNavContainer).some(function (oNavContainer) {
-			if (oNavContainer._bNavigating) {
-				oHasPendingLogger.debug("The NavContainer " + oNavContainer + " is currently navigating");
+	var NavigationContainerWaiter = WaiterBase.extend("sap.ui.test.autowaiter._navigationContainerWaiter", {
+		hasPending: function () {
+			var fnNavContainer = sap.ui.require("sap/m/NavContainer");
+			// no Nav container has been loaded - continue
+			if (!fnNavContainer) {
+				return false;
+			}
+			// instanceof filter
+			function isNavContainer(oControl) {
+				return oControl instanceof fnNavContainer;
 			}
 
-			return oNavContainer._bNavigating;
-		});
-	}
+			return Element.registry.filter(isNavContainer).some(function (oNavContainer) {
+				if (oNavContainer._bNavigating) {
+					this._oHasPendingLogger.debug("The NavContainer " + oNavContainer + " is currently navigating");
+				}
 
-	return {
-		hasPending: hasNavigatingNavContainers
-	};
+				return oNavContainer._bNavigating;
+			}.bind(this));
+		}
+	});
+
+	return new NavigationContainerWaiter();
 });

@@ -29,7 +29,7 @@
 	}
 	.sapMBarChild& {
 		>.sapMGenericTagWrap {
-			width: 100%;
+			display: flex;
 		}
 	}
 }
@@ -56,16 +56,6 @@ html.sap-desktop .sapMGenericTag:focus {
 		left: 1px;
 		z-index: 2;
 		pointer-events: none;
-	}
-}
-
-/* FIX: IE and Edge - dotted line appears blurry. */
-html[data-sap-ui-browser^="ie"].sap-desktop,
-html[data-sap-ui-browser^="ed"].sap-desktop {
-	.sapMGenericTag:focus {
-		&:after{
-			border-style: dashed;
-		}
 	}
 }
 
@@ -131,9 +121,9 @@ html[data-sap-ui-browser^="ed"].sap-desktop {
 	}
 
 	&:hover {
-		box-shadow: @sapUiShadowLevel1;
+		box-shadow: 0 0 0 0.0625rem fade(@sapUiContentShadowColor, 30);
+		cursor: pointer;
 	}
-
 
 	.sapMGenericTagActive &  {
 		background: @sapUiListActiveBackground;
@@ -147,8 +137,13 @@ html[data-sap-ui-browser^="ed"].sap-desktop {
 	}
 
 	.sapMGenericTagErrorIcon {
+		overflow: hidden;
 		color: @sapUiNegativeText;
 		padding-left: 0.5rem;
+
+		&:before {
+			line-height: normal;
+		}
 	}
 
 	.sapMGenericTagText {
@@ -164,15 +159,12 @@ html[data-sap-ui-browser^="ed"].sap-desktop {
 		min-width: @sapMGenericTagTextMinWidth;
 	}
 
-	.sapMGenericTagErrorIcon,
 	.sapMGenericTagValue {
 		display: flex;
 		flex: 0 0.5 auto;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-	.sapMGenericTagValue {
 		box-sizing: border-box;
 		align-items: center;
 		padding-left: 0.5rem;
@@ -187,7 +179,6 @@ html[data-sap-ui-browser^="ed"].sap-desktop {
 			}
 		}
 		.sapMObjectNumberUnit {
-			padding-top: 0.0625rem;
 			min-width: 0.75rem;
 		}
 	}

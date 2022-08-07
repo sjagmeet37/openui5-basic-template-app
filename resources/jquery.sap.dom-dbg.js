@@ -1,20 +1,20 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides functionality related to DOM analysis and manipulation which is not provided by jQuery itself.
 sap.ui.define([
 	'jquery.sap.global', 'sap/ui/dom/containsOrEquals',
-	'sap/ui/dom/patch', 'sap/ui/core/syncStyleClass', 'sap/ui/dom/getOwnerWindow', 'sap/ui/dom/getScrollbarSize',
+	'sap/ui/core/syncStyleClass', 'sap/ui/dom/getOwnerWindow', 'sap/ui/dom/getScrollbarSize',
 	'sap/ui/dom/denormalizeScrollLeftRTL', 'sap/ui/dom/denormalizeScrollBeginRTL',
 	'sap/ui/dom/units/Rem', 'sap/ui/dom/jquery/Aria',
 	'sap/ui/dom/jquery/Selection', 'sap/ui/dom/jquery/zIndex', 'sap/ui/dom/jquery/parentByAttribute',
 	'sap/ui/dom/jquery/cursorPos', 'sap/ui/dom/jquery/selectText', 'sap/ui/dom/jquery/getSelectedText',
 	'sap/ui/dom/jquery/rect', 'sap/ui/dom/jquery/rectContains', 'sap/ui/dom/jquery/Focusable',
 	'sap/ui/dom/jquery/hasTabIndex', 'sap/ui/dom/jquery/scrollLeftRTL', 'sap/ui/dom/jquery/scrollRightRTL', 'sap/ui/dom/jquery/Selectors'
-], function(jQuery, domContainsOrEquals, domPatch, fnSyncStyleClass, domGetOwnerWindow,
+], function(jQuery, domContainsOrEquals, fnSyncStyleClass, domGetOwnerWindow,
 	domGetScrollbarSize, domDenormalizeScrollLeftRTL, domDenormalizeScrollBeginRTL, domUnitsRem
 	/*
 	jqueryAria,
@@ -132,7 +132,7 @@ sap.ui.define([
 		var oDomRef = this.get(0);
 
 		if (oDomRef && oDomRef.outerHTML) {
-			return jQuery.trim(oDomRef.outerHTML);
+			return oDomRef.outerHTML.trim();
 		} else {
 			var doc = this[0] ? this[0].ownerDocument : document;
 
@@ -145,7 +145,6 @@ sap.ui.define([
 	/**
 	 * Returns whether <code>oDomRefChild</code> is contained in or equal to <code>oDomRefContainer</code>.
 	 *
-	 * This is a browser-independent version of the .contains method of Internet Explorer.
 	 * For compatibility reasons it returns <code>true</code> if <code>oDomRefContainer</code> and
 	 * <code>oDomRefChild</code> are equal.
 	 *
@@ -210,7 +209,7 @@ sap.ui.define([
 	jQuery.sap.denormalizeScrollBeginRTL = domDenormalizeScrollBeginRTL;
 
 	/*
-	 * The following methods are taken from jQuery UI core but modified.
+	 * The following implementation of jQuery.support.selectstart is taken from jQuery UI core but modified.
 	 *
 	 * jQuery UI Core
 	 * http://jqueryui.com
@@ -273,35 +272,6 @@ sap.ui.define([
 	 * @deprecated since 1.58 use {@link module:sap/ui/core/syncStyleClass} instead
 	 */
 	jQuery.sap.syncStyleClass = fnSyncStyleClass;
-
-	/**
-	 * This method try to replace two HTML elements according to changed attributes.
-	 * As a fallback it replaces DOM nodes.
-	 *
-	 * @param {HTMLElement} oOldDom existing element to be patched
-	 * @param {HTMLElement|String} vNewDom is the new node to patch old dom
-	 * @param {boolean} bCleanData wheter jQuery data should be removed or not
-	 * @return {boolean} true when patch is applied correctly or false when nodes are replaced.
-	 * @author SAP SE
-	 * @since 1.30.0
-	 * @private
-	 * @deprecated since 1.58 use {@link module:sap/ui/dom/patch} instead
-	 */
-	jQuery.sap.replaceDOM = function(oOldDom, vNewDom, bCleanData) {
-		var oNewDom;
-		if (typeof vNewDom === "string") {
-			oNewDom = jQuery.parseHTML(vNewDom)[0];
-		} else {
-			oNewDom = vNewDom;
-		}
-
-		if (bCleanData) {
-			jQuery.cleanData([oOldDom]);
-			jQuery.cleanData(oOldDom.getElementsByTagName("*"));
-		}
-
-		return domPatch(oOldDom, oNewDom);
-	};
 
 	return jQuery;
 

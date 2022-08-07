@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 sap.ui.define([
@@ -8,16 +8,14 @@ sap.ui.define([
 	'sap/ui/core/routing/async/TargetCache',
 	'sap/ui/core/routing/sync/TargetCache',
 	"sap/base/assert",
-	"sap/base/Log",
-	"sap/ui/thirdparty/jquery"
+	"sap/base/Log"
 ],
 	function (
 		EventProvider,
 		asyncCache,
 		syncCache,
 		assert,
-		Log,
-		jQuery
+		Log
 	) {
 		"use strict";
 
@@ -27,14 +25,14 @@ sap.ui.define([
 		 * If it is destroyed, all the views and components which it created are destroyed. If the views or components are still being loaded,
 		 * they will be destroyed after they are loaded.
 		 *
-		 * This class is currectly private and shouldn't be used out of the sap.ui.core.routing scope.
+		 * This class is currently private and shouldn't be used out of the sap.ui.core.routing scope.
 		 *
 		 * @class
 		 * @extends sap.ui.base.EventProvider
 		 * @private
 		 * @param {object} [oOptions]
 		 * @param {sap.ui.core.UIComponent} [oOptions.component] the owner of all the views that will be created by this Instance.
-		 * @param {boolean} [oOptions.async=true] Whether the views and components which are created through this class are loaded asyncly.
+		 * @param {boolean} [oOptions.async=true] Whether the views and components which are created through this class are loaded asynchronously.
 		 * This option can be set only when TargetCache is used standalone without the involvement of a Router.
 		 * Otherwise the async option is inherited from the Router.
 		 * @alias sap.ui.core.routing.TargetCache
@@ -119,6 +117,17 @@ sap.ui.define([
 			},
 
 			/**
+			 * Determines the object with the given <code>oOptions</code>, <code>sType</code> from the Target cache.
+			 *
+			 * @param {object} oOptions The options of the desired object
+			 * @param {string} sType The type of the desired object, e.g. 'View', 'Component', etc.
+			 * @return {sap.ui.core.Control|Promise} The object if it already exists in the cache, if not the promise is returned
+			 */
+			fetch: function(oOptions, sType) {
+				return this._get(oOptions, sType, undefined, undefined, true);
+			},
+
+			/**
 			 * Adds or overwrites a view or a component in the TargetCache. The given object is cached under its name and the 'undefined' key.
 			 *
 			 * If the third parameter is set to null or undefined, the previous cache view or component under the same name isn't managed by the TargetCache instance.
@@ -129,7 +138,7 @@ sap.ui.define([
 			 * @param {string} sType whether the object is a "View" or "Component". Views and components are stored separately in the cache. This means that a view and a component instance
 			 * could be stored under the same name.
 			 * @param {sap.ui.core.mvc.View|sap.ui.core.UIComponent|null|undefined} oObject the view or component instance
-			 * @return {sap.ui.core.routing.TargetCache} this for chaining.
+			 * @return {this} this for chaining.
 			 * @private
 			 */
 			set : function (sName, sType, oObject) {
@@ -152,7 +161,7 @@ sap.ui.define([
 			/**
 			 * Destroys all the views and components created by this instance.
 			 *
-			 * @returns {sap.ui.core.routing.TargetCache} this for chaining.
+			 * @returns {this} this for chaining.
 			 */
 			destroy : function () {
 				EventProvider.prototype.destroy.apply(this);
@@ -162,7 +171,7 @@ sap.ui.define([
 				}
 
 				function destroyObject(oObject) {
-					if (oObject && oObject.destroy) {
+					if (oObject && oObject.destroy && !oObject._bIsBeingDestroyed) {
 						oObject.destroy();
 					}
 				}
@@ -205,13 +214,22 @@ sap.ui.define([
 			 */
 
 			/**
-			 * Attach event-handler <code>fnFunction</code> to the 'created' event of this <code>sap.ui.core.routing.TargetCache</code>.<br/>
-			 * @param {object} [oData] The object, that should be passed along with the event-object when firing the event.
-			 * @param {function} fnFunction The function to call, when the event occurs. This function will be called on the
-			 * oListener-instance (if present) or in a 'static way'.
-			 * @param {object} [oListener] Object on which to call the given function.
+			 * Attaches event handler <code>fnFunction</code> to the {@link #event:created created} event of this
+			 * <code>sap.ui.core.routing.TargetCache</code>.
 			 *
-			 * @return {sap.ui.core.routing.TargetCache} <code>this</code> to allow method chaining
+			 * When called, the context of the event handler (its <code>this</code>) will be bound to <code>oListener</code>
+			 * if specified, otherwise it will be bound to this <code>sap.ui.core.routing.TargetCache</code> itself.
+			 *
+			 * @param {object}
+			 *            [oData] An application-specific payload object that will be passed to the event handler
+			 *            along with the event object when firing the event
+			 * @param {function}
+			 *            fnFunction The function to be called, when the event occurs
+			 * @param {object}
+			 *            [oListener] Context object to call the event handler with. Defaults to this
+			 *            <code>sap.ui.core.routing.TargetCache</code> itself
+			 *
+			 * @returns {this} Reference to <code>this</code> in order to allow method chaining
 			 * @public
 			 */
 			attachCreated : function(oData, fnFunction, oListener) {
@@ -219,13 +237,14 @@ sap.ui.define([
 			},
 
 			/**
-			 * Detach event-handler <code>fnFunction</code> from the 'created' event of this <code>sap.ui.core.routing.TargetCache</code>.<br/>
+			 * Detaches event handler <code>fnFunction</code> from the {@link #event:created created} event of this
+			 * <code>sap.ui.core.routing.TargetCache</code>.
 			 *
-			 * The passed function and listener object must match the ones previously used for event registration.
+			 * The passed function and listener object must match the ones used for event registration.
 			 *
-			 * @param {function} fnFunction The function to call, when the event occurs.
-			 * @param {object} oListener Object on which the given function had to be called.
-			 * @return {sap.ui.core.routing.TargetCache} <code>this</code> to allow method chaining
+			 * @param {function} fnFunction The function to be called, when the event occurs
+			 * @param {object} [oListener] Context object on which the given function had to be called
+			 * @returns {this} Reference to <code>this</code> in order to allow method chaining
 			 * @public
 			 */
 			detachCreated : function(fnFunction, oListener) {
@@ -233,28 +252,28 @@ sap.ui.define([
 			},
 
 			/**
-			 * Fire event created to attached listeners.
+			 * Fires event {@link #event:created created} to attached listeners.
 			 *
-			 * @param {object} [mArguments] the arguments to pass along with the event.
-			 * @return {sap.ui.core.routing.TargetCache} <code>this</code> to allow method chaining
+			 * @param {object} [oParameters] Parameters to pass along with the event
+			 * @returns {this} Reference to <code>this</code> in order to allow method chaining
 			 * @protected
 			 */
-			fireCreated : function(mArguments) {
-				return this.fireEvent("created", mArguments);
+			fireCreated : function(oParameters) {
+				return this.fireEvent("created", oParameters);
 			},
 
 			/*
 			 * Privates
 			 */
 
-			_get : function (oOptions, sType, bGlobalId, oInfo) {
+			_get : function (oOptions, sType, bGlobalId, oInfo, bNoCreate) {
 				var oObject;
 				switch (sType) {
 					case "View":
-						oObject = this._getView(oOptions, bGlobalId);
+						oObject = this._getView(oOptions, bGlobalId, bNoCreate);
 						break;
 					case "Component":
-						oObject = this._getComponent(oOptions, bGlobalId, oInfo);
+						oObject = this._getComponent(oOptions, bGlobalId, oInfo, bNoCreate);
 						break;
 					default:
 						throw Error("The given sType: " + sType + " isn't supported by TargetCache.getObject");
@@ -264,29 +283,30 @@ sap.ui.define([
 
 			/**
 			 * Hook for retrieving views synchronous way since Targets and router are not doing this yet
-			 * @param oOptions
-			 * @returns {*}
+			 * @param {object} oOptions The options to determine the view
+			 * @param {boolean} bGlobalId True, if a global id should be generated
+			 * @returns {*} the view
 			 * @private
 			 */
-			_getView : function (oOptions, bGlobalId) {
+			_getView : function (oOptions, bGlobalId, bNoCreate) {
 				if (!bGlobalId) {
 					oOptions = this._createId(oOptions);
 				}
 
-				return this._getViewWithGlobalId(oOptions);
+				return this._getViewWithGlobalId(oOptions, false /* sync creation */, bNoCreate);
 			},
 
-			_getComponent : function (oOptions, bGlobalId, oInfo) {
+			_getComponent : function (oOptions, bGlobalId, oInfo, bNoCreate) {
 				if (!bGlobalId) {
 					oOptions = this._createId(oOptions);
 				}
 
-				return this._getComponentWithGlobalId(oOptions, oInfo);
+				return this._getComponentWithGlobalId(oOptions, oInfo, bNoCreate);
 			},
 
 			_createId: function (oOptions) {
 				if (this._oComponent && oOptions.id) {
-					oOptions = jQuery.extend({}, oOptions, { id : this._oComponent.createId(oOptions.id) });
+					oOptions = Object.assign({}, oOptions, { id : this._oComponent.createId(oOptions.id) });
 				}
 				return oOptions;
 			},

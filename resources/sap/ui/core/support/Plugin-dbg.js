@@ -1,12 +1,12 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.support.Plugin
 sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/uid"],
-	function(BaseObject, jQueryDOM, uid) {
+	function(BaseObject, jQuery, uid) {
 	"use strict";
 
 
@@ -17,9 +17,9 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @abstract
 	 * @extends sap.ui.base.Object
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 * @alias sap.ui.core.support.Plugin
 	 */
 	var Plugin = BaseObject.extend("sap.ui.core.support.Plugin", {
@@ -42,13 +42,13 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @param {sap.ui.core.support.Support} oSupportStub the support stub
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.init = function(oSupportStub){
 		for (var i = 0; i < this._aEventIds.length; i++) {
-			var fHandler = this["on" + this._aEventIds[i]];
-			if (fHandler && jQuery.isFunction(fHandler)) {
-				oSupportStub.attachEvent(this._aEventIds[i], fHandler, this);
+			var fnHandler = this["on" + this._aEventIds[i]];
+			if (typeof fnHandler === "function") {
+				oSupportStub.attachEvent(this._aEventIds[i], fnHandler, this);
 			}
 		}
 		this._bActive = true;
@@ -61,13 +61,13 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @param {sap.ui.core.support.Support} oSupportStub the support stub
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.exit = function(oSupportStub){
 		for (var i = 0; i < this._aEventIds.length; i++) {
-			var fHandler = this["on" + this._aEventIds[i]];
-			if (fHandler && jQuery.isFunction(fHandler)) {
-				oSupportStub.detachEvent(this._aEventIds[i], fHandler, this);
+			var fnHandler = this["on" + this._aEventIds[i]];
+			if (typeof fnHandler === "function") {
+				oSupportStub.detachEvent(this._aEventIds[i], fnHandler, this);
 			}
 		}
 		this._bActive = false;
@@ -79,7 +79,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {string} the id
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.getId = function(){
 		return this._id;
@@ -91,7 +91,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {string} the title
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.getTitle = function(){
 		return this._title;
@@ -110,7 +110,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {boolean} whether this plugin instance can run in the tool window
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.isToolPlugin = function(){
 		return true;
@@ -129,7 +129,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {boolean} whether this plugin instance can run in the application window
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.isAppPlugin = function(){
 		return true;
@@ -144,7 +144,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {boolean} true if the plugin instance runs in the tool window, otherwise false
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.runsAsToolPlugin = function(){
 		return this._bIsToolPlugin;
@@ -164,13 +164,13 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 * @param {string} [sSuffix] ID suffix to get a jQuery object for
 	 * @return {jQuery} The jQuery wrapped plugin's DOM reference
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.$ = function(sSuffix){
 		if (this.isToolPlugin()) {
-			var jRef = jQueryDOM(document.getElementById(sSuffix ? this.getId() + "-" + sSuffix : this.getId()));
+			var jRef = jQuery(document.getElementById(sSuffix ? this.getId() + "-" + sSuffix : this.getId()));
 			if (jRef.length == 0 && !sSuffix) {
-				jRef = jQuery("<DIV/>", {id:this.getId()});
+				jRef = jQuery("<div></div>", {id:this.getId()});
 				jRef.appendTo(jQuery(".sapUiSupportCntnt"));
 			}
 			return jRef;
@@ -189,7 +189,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @param {string} sCssResourcePath Resource name of a CSS file, but without the '.css' extension
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.addStylesheet = function(sCssResourcePath) {
 		if (!sCssResourcePath) {
@@ -209,7 +209,7 @@ sap.ui.define(['sap/ui/base/Object', "sap/ui/thirdparty/jquery", "sap/base/util/
 	 *
 	 * @return {boolean} whether the plugin is currently active or not
 	 * @private
-	 * @sap-restricted
+	 * @ui5-restricted
 	 */
 	Plugin.prototype.isActive = function(){
 		return this._bActive;

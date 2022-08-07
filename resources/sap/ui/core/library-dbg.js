@@ -1,20 +1,25 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 /**
  * Initialization Code and shared classes of library sap.ui.core.
  */
-sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
-	function(DataType, CalendarType) {
+sap.ui.define([
+	'sap/ui/base/DataType',
+	'sap/ui/core/mvc/ViewType', // provides sap.ui.core.mvc.ViewType
+	'./CalendarType', // provides sap.ui.core.CalendarType
+	'./Core' // provides sap.ui.getCore()
+],
+	function(DataType, ViewType) {
 	"use strict";
 
 	// delegate further initialization of this library to the Core
 	sap.ui.getCore().initLibrary({
 		name : "sap.ui.core",
-		version: "1.64.0",
+		version: "1.96.2",
 		designtime: "sap/ui/core/designtime/library.designtime",
 		types: [
 
@@ -31,6 +36,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.AbsoluteCSSSize",
 			"sap.ui.core.AccessibleRole",
 			"sap.ui.core.AccessibleLandmarkRole",
+			"sap.ui.core.aria.HasPopup",
 			"sap.ui.core.BarColor",
 			"sap.ui.core.BusyIndicatorSize",
 			"sap.ui.core.CalendarType",
@@ -61,6 +67,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.ValueState",
 			"sap.ui.core.VerticalAlign",
 			"sap.ui.core.Wrapping",
+			"sap.ui.core.InvisibleMessageMode",
 			"sap.ui.core.dnd.DropEffect",
 			"sap.ui.core.dnd.DropLayout",
 			"sap.ui.core.dnd.DropPosition",
@@ -76,7 +83,10 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.IFormContent",
 			"sap.ui.core.dnd.IDragInfo",
 			"sap.ui.core.dnd.IDropInfo",
-			"sap.ui.core.IDScope"
+			"sap.ui.core.IDScope",
+			"sap.ui.core.ITitleContent",
+			"sap.ui.core.IAsyncContentCreation",
+			"sap.ui.core.IPlaceholderSupport"
 		],
 		controls: [
 			"sap.ui.core.ComponentContainer",
@@ -87,7 +97,6 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.LocalBusyIndicator",
 			"sap.ui.core.ScrollBar",
 			"sap.ui.core.TooltipBase",
-			"sap.ui.core.UIComponent",
 			"sap.ui.core.XMLComposite",
 			"sap.ui.core.mvc.HTMLView",
 			"sap.ui.core.mvc.JSONView",
@@ -96,8 +105,8 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.mvc.View",
 			"sap.ui.core.mvc.XMLView",
 			"sap.ui.core.tmpl.DOMElement",
-			"sap.ui.core.tmpl.Template",
-			"sap.ui.core.tmpl.TemplateControl"
+			"sap.ui.core.tmpl.TemplateControl",
+			"sap.ui.core.util.Export"
 		],
 		elements: [
 			"sap.ui.core.CustomData",
@@ -115,7 +124,9 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 			"sap.ui.core.dnd.DragDropInfo",
 			"sap.ui.core.search.OpenSearchProvider",
 			"sap.ui.core.search.SearchProvider",
-			"sap.ui.core.tmpl.DOMAttribute"
+			"sap.ui.core.tmpl.DOMAttribute",
+			"sap.ui.core.util.ExportCell",
+			"sap.ui.core.InvisibleMessage"
 		],
 		extensions: {
 			"sap.ui.support" : {
@@ -148,7 +159,8 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 * @namespace
 	 * @alias sap.ui.core
 	 * @author SAP SE
-	 * @version 1.64.0
+	 * @version 1.96.2
+	 * @since 0.8
 	 * @public
 	 */
 	var thisLib = sap.ui.core;
@@ -694,8 +706,60 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 	};
 
+	thisLib.aria = thisLib.aria || {};
+
 	/**
-	 * Configuration options for the colors of a progress bar
+	 * Types of popups to set as aria-haspopup attribute.
+	 * Most of the values (except "None") of the enumeration are taken from the ARIA specification:
+	 * https://www.w3.org/TR/wai-aria/#aria-haspopup
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.84
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	thisLib.aria.HasPopup = {
+
+		/**
+		 * None - the aria-haspopup attribute will not be rendered.
+		 * @public
+		 */
+		None : "None",
+
+		/**
+		 * Menu popup type.
+		 * @public
+		 */
+		Menu : "Menu",
+
+		/**
+		 * ListBox popup type.
+		 * @public
+		 */
+		ListBox : "ListBox",
+
+		/**
+		 * Tree popup type.
+		 * @public
+		 */
+		Tree : "Tree",
+
+		/**
+		 * Grid popup type.
+		 * @public
+		 */
+		Grid : "Grid",
+
+		/**
+		 * Dialog popup type.
+		 * @public
+		 */
+		Dialog : "Dialog"
+
+	};
+
+	/**
+	 * Configuration options for the colors of a progress bar.
 	 *
 	 * @enum {string}
 	 * @public
@@ -730,7 +794,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	};
 
 	/**
-	 * Configuration options for the BusyIndicator size
+	 * Configuration options for the <code>BusyIndicator</code> size.
 	 *
 	 * @enum {string}
 	 * @public
@@ -897,7 +961,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * Font design for texts
+	 * Font design for texts.
 	 *
 	 * @enum {string}
 	 * @public
@@ -944,7 +1008,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * Configuration options for horizontal alignments of controls
+	 * Configuration options for horizontal alignments of controls.
 	 *
 	 * @enum {string}
 	 * @public
@@ -986,7 +1050,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * @classdesc A string type representing an Id or a name.
+	 * @classdesc A string type representing an ID or a name.
 	 *
 	 * Allowed is a sequence of characters (capital/lowercase), digits, underscores, dashes, points and/or colons.
 	 * It may start with a character or underscore only.
@@ -1066,7 +1130,28 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 		 * Contrast color.
 		 * @public
 		 */
-		Contrast : "Contrast"
+		Contrast : "Contrast",
+
+		/**
+		 * Color that indicates an icon which isn't interactive
+		 * @public
+		 * @since 1.76
+		 */
+		NonInteractive : "NonInteractive",
+
+		/**
+		 * Color for icon used in a Tile
+		 * @public
+		 * @since 1.76
+		 */
+		Tile : "Tile",
+
+		/**
+		 * Color for icon used as a marker
+		 * @public
+		 * @since 1.76
+		 */
+		Marker : "Marker"
 
 	};
 
@@ -1118,11 +1203,13 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 	/**
 	 * Colors to highlight certain UI elements.
-	 * In contrast to the <code>ValueState</code> the semantic meaning must be defined by the application.
+	 *
+	 * In contrast to the <code>ValueState</code>, the semantic meaning must be defined by the application.
 	 *
 	 * @enum {string}
 	 * @public
 	 * @since 1.62.0
+	 * @see {@link fiori:/how-to-use-semantic-colors/ Semantic Colors}
 	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	thisLib.IndicationColor = {
@@ -1155,16 +1242,37 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 		 * Indication Color 5
 		 * @public
 		 */
-		Indication05 : "Indication05"
+		Indication05 : "Indication05",
 
+		/**
+		 * Indication Color 6
+		 * @public
+		 * @since 1.75
+		 */
+		Indication06 : "Indication06",
+
+		/**
+		 * Indication Color 7
+		 * @public
+		 * @since 1.75
+		 */
+		Indication07 : "Indication07",
+
+		/**
+		 * Indication Color 8
+		 * @public
+		 * @since 1.75
+		 */
+		Indication08 : "Indication08"
 	};
 
 
 	/**
-	 * Defines the different message types of a message
+	 * Defines the different message types.
 	 *
 	 * @enum {string}
 	 * @public
+	 * @since 1.10
 	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	thisLib.MessageType = {
@@ -1240,7 +1348,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * Orientation of a UI element
+	 * Orientation of a UI element.
 	 *
 	 * @enum {string}
 	 * @public
@@ -1329,7 +1437,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * Actions are: Click on track, button, drag of thumb, or mouse wheel click
+	 * Actions are: Click on track, button, drag of thumb, or mouse wheel click.
 	 *
 	 * @enum {string}
 	 * @public
@@ -1401,9 +1509,9 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 
 
 	/**
-	 * Sort order of a column
+	 * Sort order of a column.
 	 *
-	 * @version 1.64.0
+	 * @version 1.96.2
 	 * @enum {string}
 	 * @public
 	 * @since 1.61.0
@@ -1578,13 +1686,69 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 */
 
 	/**
+	 * Marker interface for subclasses of <code>sap.ui.core.UIComponent</code>.
+	 *
+	 * Implementing this interface allows a {@link sap.ui.core.UIComponent} to be created fully asynchronously.
+	 * This interface will implicitily set the component's rootView and router configuration to async.
+	 * Nested views will also be handled asynchronously.
+	 * Additionally the error handling during the processing of views is stricter and will fail if a view definition contains
+	 * errors, e.g. broken binding strings.
+	 *
+	 * <b>Note:</b> Nested components (via {@link sap.ui.core.ComponentContainer}) are not handled asynchronously by default.
+	 *
+	 * When implementing this interface the {@link sap.ui.core.Component.create Component.create} factory's result Promise
+	 * will resolve once the defined <code>rootView</code> is fully processed.
+	 *
+	 * An asynchronous component can also return a Promise in its {@link sap.ui.core.UIComponent#createContent createContent} function.
+	 * This Promise will also be chained into the {@link sap.ui.core.Component.create Component.create} factory's result Promise.
+	 *
+	 * See {@link sap.ui.core.UIComponent#createContent} for more details and usage samples.
+	 *
+	 * @name sap.ui.core.IAsyncContentCreation
+	 * @interface
+	 * @public
+	 * @since 1.89.0
+	 */
+
+	/**
+	 * Marker interface for container controls.
+	 *
+	 * Implementing this interface allows a container control to display a {@link sap.ui.core.Placeholder}.
+	 * This requires the container control to implement the <code>showPlaceholder</code> and <code>hidePlaceholder</code>
+	 * methods.
+	 *
+	 * Optionally, the <code>needPlaceholder</code> method can be implemented to defined, whether a placeholder is needed or not.
+	 * If implemented, this method must return a <code>boolean</code>. Depending on the return value, <code>showPlaceholder</code>
+	 * will be called or not.
+	 *
+	 * @name sap.ui.core.IPlaceholderSupport
+	 * @interface
+	 * @public
+	 * @since 1.92.0
+	 */
+
+	/**
+
 	 * Marker interface for controls that can serve as a context menu.
-	 * Implementation of this interface should implement <li><code>openAsContextMenu</code></li> method.
+	 *
+	 * Implementation of this interface should implement the <code>openAsContextMenu</code> method.
 	 *
 	 * @name sap.ui.core.IContextMenu
 	 * @interface
 	 * @public
 	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
+	 */
+
+	/**
+	 * Opens the control by given opener ref.
+	 * @param {jQuery.Event | object} oEvent
+	 *   An <code>oncontextmenu</code> event object or an object with properties left, top, offsetX, offsetY
+	 * @param {sap.ui.core.Element|HTMLElement} oOpenerRef
+	 *   The element which will get the focus back again after the menu was closed
+	 *
+	 * @public
+	 * @function
+	 * @name sap.ui.core.IContextMenu.openAsContextMenu
 	 */
 
 	/**
@@ -1614,6 +1778,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 * @name sap.ui.core.IDScope
 	 * @interface
 	 * @private
+	 * @ui5-restricted
 	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
 	 */
 
@@ -1625,15 +1790,6 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 * @interface
 	 * @public
 	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
-	 */
-
-	/**
-	 * Opens the control by given opener ref.
-	 * @param {string} oEvent oncontextmenu event
-	 * @param {sap.ui.core.Element|DOMRef} oOpenerRef The element which will get the focus back again after the menu was closed.
-	 *
-	 * @function
-	 * @name sap.ui.core.IContextMenu.openAsContextMenu
 	 */
 
 	/**
@@ -1651,15 +1807,85 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 */
 
 	/**
-	 * In the <code>Form</code> control all content controls are positioned on a grid cell base. By default
+	 *
+	 * Marker interface for controls that can be used in <code>content</code> aggregation of the <code>sap.m.Title</code> control.
+	 *
+	 * @since 1.87
+	 * @name sap.ui.core.ITitleContent
+	 * @interface
+	 * @public
+	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
+	 */
+
+
+
+	/**
+	 * Whether a control wants to keep its original width even when used in a <code>Form</code>.
+	 *
+	 * In the <code>Form</code> control, all content controls are positioned on a grid cell base. By default,
 	 * the controls use the full width of the used grid cell. But for some controls (like image controls),
 	 * this is not the desired behavior. In this case the control must keep its original width.
 	 *
-	 * @return {boolean} true if the <code>Form</code> is not allowed to adjust the width of the control to use the cell's width
+	 * This is an optional method. When not defined, the width of the control might be adjusted.
+	 *
+	 * @returns {boolean} true if the <code>Form</code> is not allowed to adjust the width of the control to use the cell's width
 	 * @since 1.48.0
 	 * @public
 	 * @function
-	 * @name sap.ui.core.IFormContent.getFormDoNotAdjustWidth
+	 * @name sap.ui.core.IFormContent.getFormDoNotAdjustWidth?
+	 */
+
+	/**
+	 * Marker interface for controls that can be used as content of <code>sap.ui.layout.form.SemanticFormElement</code>.
+	 *
+	 * If the value-holding property of the control is not <code>value</code or <code>text</code>, the name of the
+	 * value-holding property must be returned in the <code>getFormValueProperty</code> function.
+	 *
+	 * If the value of the control needs some special output formatting (to show a description instead of a key), this
+	 * formatted text needs to be returned in the <code>getFormFormattedValue</code> function.
+	 *
+	 * @since 1.86.0
+	 * @name sap.ui.core.ISemanticFormContent
+	 * @interface
+	 * @public
+	 * @experimental As of version 1.86
+	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
+	 */
+
+	/**
+	 * Returns the formatted value of a control used in a <code>SemanticFormElement</code>.
+	 *
+	 * In the <code>SemanticFormElement</code> element, the assigned fields are rendered in edit mode. In display mode, a text
+	 * is rendered that concatenates the values of all assigned fields. In some cases the displayed text does not match the value
+	 * of the field and needs some formatting. In other cases the control does not have a <code>value</code> property,
+	 * so the <code>SemanticFormElement</code> element cannot determine the value.
+	 *
+	 * This is an optional method. If not defined, the <code>value</code> property or the <code>text</code> property is used to determine the value.
+	 *
+	 * @returns {string|Promise} Formatted value or a <code>Promise</code> returning the formatted value if resolved
+	 * @since 1.86.0
+	 * @public
+	 * @experimental As of version 1.86
+	 * @function
+	 * @name sap.ui.core.ISemanticFormContent.getFormFormattedValue?
+	 */
+
+	/**
+	 * Returns the name of the value-holding property of a control used in a <code>SemanticFormElement</code>.
+	 *
+	 * In the <code>SemanticFormElement</code> element, the assigned fields are rendered in edit mode. In display mode, a text
+	 * is rendered that concatenates the values of all assigned fields.
+	 * So the concatenated text needs to be updated if the value of a control changes. If a control does not have a <code>value</code> property,
+	 * the <code>SemanticFormElement</code> element needs to know the propery it has to listen for changes.
+	 *
+	 * This is an optional method. If not defined, the <code>value</code> property or the <code>text</code> property is used to determine the value.
+	 *
+	 * @returns {string} Name of the value-holding property
+	 * @since 1.86.0
+	 * @public
+	 * @experimental As of version 1.86
+	 * @function
+	 * @name sap.ui.core.ISemanticFormContent.getFormValueProperty?
 	 */
 
 	/**
@@ -1684,7 +1910,9 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	 *
 	 * @enum {string}
 	 * @public
+	 * @see {@link fiori:/how-to-use-semantic-colors/ Semantic Colors}
 	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 * @since 1.0
 	 */
 	thisLib.ValueState = {
 
@@ -1709,6 +1937,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 		/**
 		 * State is informative.
 		 * @public
+		 * @since 1.61
 		 */
 		Information : "Information",
 
@@ -1895,55 +2124,22 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 		None : "None"
 	};
 
-
 	thisLib.mvc = thisLib.mvc || {};
 
 	/**
-	 * Specifies possible view types
+	 * Specifies possible view types.
 	 *
 	 * @enum {string}
 	 * @public
+	 * @alias sap.ui.core.mvc.ViewType
 	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
 	 */
-	thisLib.mvc.ViewType = {
-
-		/**
-		 * JSON View
-		 * @public
-		 */
-		JSON : "JSON",
-
-		/**
-		 * XML view
-		 * @public
-		 */
-		XML : "XML",
-
-		/**
-		 * HTML view
-		 * @public
-		 */
-		HTML : "HTML",
-
-		/**
-		 * JS View
-		 * @public
-		 */
-		JS : "JS",
-
-		/**
-		 * Template View
-		 * @public
-		 */
-		Template : "Template"
-
-	};
-
+	thisLib.mvc.ViewType = ViewType;
 
 	thisLib.routing = thisLib.routing || {};
 
 	/**
-	 * Enumaration for different HistoryDirections
+	 * Enumeration for different HistoryDirections.
 	 *
 	 * @enum {string}
 	 * @public
@@ -1952,25 +2148,25 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	thisLib.routing.HistoryDirection = {
 
 		/**
-		 * The page has already been navigated to and it was the successor of the previous page
+		 * The page has already been navigated to and it was the successor of the previous page.
 		 * @public
 		 */
 		Forwards : "Forwards",
 
 		/**
-		 * The page has already been navigated to and it was the precessor of the previous page
+		 * The page has already been navigated to and it was the predecessor of the previous page.
 		 * @public
 		 */
 		Backwards : "Backwards",
 
 		/**
-		 * A new Entry is added to the history
+		 * A new entry is added to the history.
 		 * @public
 		 */
 		NewEntry : "NewEntry",
 
 		/**
-		 * A Navigation took place, but it could be any of the other three states
+		 * A navigation took place, but it could be any of the other three states.
 		 * @public
 		 */
 		Unknown : "Unknown"
@@ -1978,8 +2174,8 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	};
 
 	/**
-	 * Enumeration for different lifecycle behaviors of Components created by the
-	 * ComponentContainer.
+	 * Enumeration for different lifecycle behaviors of components created by the
+	 * <code>ComponentContainer</code>.
 	 *
 	 * @enum {string}
 	 * @public
@@ -1988,28 +2184,54 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	sap.ui.core.ComponentLifecycle =  {
 
 		/**
-		 * Legacy lifecycle means that the ComponentContainer takes care
-		 * to destroy the Component which is associated with the
-		 * ComponentContainer once the ComponentContainer is destroyed but
-		 * not when a new Component is associated.
+		 * Legacy lifecycle means that the <code>ComponentContainer</code> takes care
+		 * to destroy the component which is associated with the
+		 * <code>ComponentContainer</code> once the <code>ComponentContainer</code> is destroyed,
+		 * but not when a new component is associated.
 		 * @public
 		 */
 		Legacy : "Legacy",
 
 		/**
-		 * Application managed lifecycle means that the Application takes care
-		 * to destroy the Components associated with the ComponentContainer.
+		 * Application managed lifecycle means that the application takes care
+		 * to destroy the components associated with the <code>ComponentContainer</code>.
 		 * @public
 		 */
 		Application : "Application",
 
 		/**
-		 * Container managed lifecycle means that the ComponentContainer takes
-		 * care to destroy the Components associated with the ComponentContainer
-		 * once the ComponentContainer is destroyed or a new Component is associated.
+		 * Container managed lifecycle means that the <code>ComponentContainer</code> takes
+		 * care to destroy the components associated with the <code>ComponentContainer</code>
+		 * once the <code>ComponentContainer</code> is destroyed or a new component is associated.
 		 * @public
 		 */
 		Container : "Container"
+
+	};
+
+	/**
+	 * Enumeration for different mode behaviors of the <code>InvisibleMessage</code>.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @experimental Since 1.73.
+	 * @since 1.78
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.ui.core.InvisibleMessageMode =  {
+
+		/**
+		 * Indicates that updates to the region should be presented at the next graceful opportunity,
+		 * such as at the end of reading the current sentence, or when the user pauses typing.
+		 * @public
+		 */
+		Polite : "Polite",
+
+		/**
+		 * Indicates that updates to the region have the highest priority and should be presented to the user immediately.
+		 * @public
+		 */
+		Assertive : "Assertive"
 
 	};
 
@@ -2050,7 +2272,7 @@ sap.ui.define(['sap/ui/base/DataType', './CalendarType', './Core'],
 	each("sap.ui.model.", ["Filter","Sorter","json.JSONModel","resource.ResourceModel","odata.ODataModel","odata.v2.ODataModel","odata.v4.ODataModel","xml.XMLModel"]);
 	each("sap.ui.model.type.", ["Boolean","Integer","Float","String","Date","Time","DateTime","FileSize","Currency","Unit","DateInterval", "DateTimeInterval", "TimeInterval"]);
 	each("sap.ui.model.odata.type.", ["Boolean","Byte","Currency","Date","DateTime","DateTimeOffset","Double","Decimal","Guid","Int16","Int32","Int64","Raw","SByte","Single","Stream","String","Time","TimeOfDay","Unit"]);
-	each("sap.ui.core.", ["Locale","LocaleData","mvc.Controller"]);
+	each("sap.ui.core.", ["Locale","LocaleData","mvc.Controller", "UIComponent"]);
 	each("sap.ui.core.mvc.", ["Controller", "View", "JSView", "JSONView", "XMLView", "HTMLView", "TemplateView"], "sap.ui");
 	each("sap.ui.core.", ["Component"], "sap.ui");
 	each("sap.ui.core.tmpl.", ["Template"], "sap.ui");

@@ -1,19 +1,18 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-
+/*eslint-disable max-len */
 // Provides the XML model implementation of a list binding
 sap.ui.define([
 	'sap/ui/model/ChangeReason',
 	'sap/ui/model/ClientListBinding',
 	"sap/ui/util/XMLHelper",
-	"sap/base/util/array/diff",
 	"sap/base/util/deepEqual",
-	"sap/ui/thirdparty/jquery"
+	"sap/base/util/each"
 ],
-	function(ChangeReason, ClientListBinding, XMLHelper, diff, deepEqual, jQuery) {
+	function(ChangeReason, ClientListBinding, XMLHelper, deepEqual, each) {
 	"use strict";
 
 
@@ -64,7 +63,7 @@ sap.ui.define([
 
 			//Check diff
 			if (this.aLastContexts && iStartIndex < this.iLastEndIndex) {
-				aContexts.diff = diff(this.aLastContextData, aContextData);
+				aContexts.diff = this.diffData(this.aLastContextData, aContextData);
 			}
 
 			this.iLastEndIndex = iStartIndex + iLength;
@@ -84,8 +83,12 @@ sap.ui.define([
 	};
 
 	/**
-	 * Returns the entry data as required for change detection/diff. For the XMLModel this is the node
-	 * referenced by the context, serialized as XML.
+	 * Returns the entry data as required for change detection/diff. For the XMLModel this is the
+	 * node referenced by the context, serialized as XML.
+	 *
+	 * @param {sap.ui.model.Context} oContext The context to get the entry data from
+	 *
+	 * @returns {string} The entry data of the given context
 	 *
 	 * @private
 	 */
@@ -103,7 +106,7 @@ sap.ui.define([
 			this.oList = [];
 			var that = this;
 			if (this.bUseExtendedChangeDetection) {
-				jQuery.each(oList, function(sKey, oNode) {
+				each(oList, function(sKey, oNode) {
 					that.oList.push(oNode.cloneNode(true));
 				});
 			} else {
@@ -121,23 +124,23 @@ sap.ui.define([
 	};
 
 	/**
-	 * Check whether this Binding would provide new values and in case it changed,
-	 * inform interested parties about this.
+	 * Checks whether this Binding would provide new values and in case it changed, fires a change
+	 * event with change reason <code>Change</code>.
 	 *
 	 * @param {boolean} bForceupdate
+	 *   Whether the change event is fired regardless of the binding's state
 	 *
 	 */
 	XMLListBinding.prototype.checkUpdate = function(bForceupdate){
+		var oList;
 
 		if (this.bSuspended && !this.bIgnoreSuspend && !bForceupdate) {
 			return;
 		}
 
 		if (!this.bUseExtendedChangeDetection) {
-			var oList = this.oModel._getObject(this.sPath, this.oContext) || [];
+			oList = this.oModel._getObject(this.sPath, this.oContext) || [];
 			if (oList.length != this.oList.length || bForceupdate) {
-				// TODO does not work currently, so so old behavior
-				//if (!jQuery.sap.equal(this.oList, oList)) {
 				this.update();
 				this._fireChange({reason: ChangeReason.Change});
 			}
@@ -146,7 +149,7 @@ sap.ui.define([
 			var that = this;
 
 			//If the list has changed we need to update the indices first
-			var oList = this.oModel._getObject(this.sPath, this.oContext) || [];
+			oList = this.oModel._getObject(this.sPath, this.oContext) || [];
 			if (this.oList.length != oList.length) {
 				bChangeDetected = true;
 			}
@@ -160,12 +163,14 @@ sap.ui.define([
 				if (this.aLastContexts.length != aContexts.length) {
 					bChangeDetected = true;
 				} else {
-					jQuery.each(this.aLastContextData, function(iIndex, oLastData) {
+					each(this.aLastContextData, function(iIndex, oLastData) {
 						var oCurrentData = that.getContextData(aContexts[iIndex]);
 						if (oCurrentData !== oLastData) {
 							bChangeDetected = true;
 							return false;
 						}
+
+						return true;
 					});
 				}
 			} else {

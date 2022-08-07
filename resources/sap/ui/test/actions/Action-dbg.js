@@ -1,10 +1,10 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-/*global FocusEvent, MouseEvent, document */
+/*global FocusEvent, DragEvent, DataTransfer, MouseEvent, document */
 sap.ui.define([
 	'sap/ui/base/ManagedObject',
 	'sap/ui/qunit/QUnitUtils',
@@ -92,7 +92,10 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 					// if no adapter is set or no element is found for it -- fallback to control focus dom ref
 					$ActionDomRef = jQueryDOM(oControl.getFocusDomRef());
 					if (!$ActionDomRef.length) {
-						sErrorMessage += "DOM representation of control '" + oControl + "' has no focus DOM reference";
+						$ActionDomRef = oControl.$();
+						if (!$ActionDomRef.length) {
+							sErrorMessage += "DOM representation of control '" + oControl + "' has no focus DOM reference";
+						}
 					}
 				}
 			}
@@ -122,6 +125,12 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 			this.oLogger = _OpaLogger.getLogger(this.getMetadata().getName());
 		},
 
+		dropPosition: {
+			BEFORE: "BEFORE",
+			AFTER: "AFTER",
+			CENTER: "CENTER"
+		},
+
 		/**
 		 * Traverses the metadata chain of a control and looks for action adapters.
 		 * An action adapter is a suffix part of the ID of a DOM element, where
@@ -135,7 +144,7 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 				var vAdapter = this.controlAdapters[oMetadata.getName()];
 
 				if (vAdapter) {
-					if (jQueryDOM.isFunction(vAdapter)) {
+					if (typeof vAdapter === "function") {
 						return vAdapter(oControl);
 					}
 					if (typeof vAdapter === "string") {
@@ -155,23 +164,22 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 		},
 
 		_tryOrSimulateFocusin: function ($DomRef, oControl) {
-			var isAlreadyFocused = $DomRef.is(":focus");
-			var bFireArtificialEvents;
 			var oDomRef = $DomRef[0];
+			var bFireArtificialEvents = false;
+			var isAlreadyFocused = this._isFocused(oDomRef);
+			var bIsNewFF = Device.browser.firefox && Device.browser.version >= 60;
 
-			if (isAlreadyFocused || (Device.browser.msie && Device.browser.version < 12) ||
-				(Device.browser.firefox && Device.browser.version >= 60)) {
-				// If the event is already focused, make sure onfocusin event of the control will be properly fired when executing this action,
+			if (isAlreadyFocused || bIsNewFF) {
+				// 1. If the event is already focused, make sure onfocusin event of the control will be properly fired when executing this action,
 				// otherwise the next blur will not be able to safely remove the focus.
-				// In IE11 (and often in Firefox v61.0/v60.0 ESR, if the focus action fails and focusin is dispatched, onfocusin will be called twice
-				// to avoid this, directly dispatch the artificial events
+				// 2. In IE11 (and often in Firefox v61.0/v60.0 ESR), if the focus action fails and focusin is dispatched, onfocusin will be called twice.
+				// To avoid this, directly dispatch the artificial events
 				bFireArtificialEvents = true;
 			} else {
-				$DomRef.focus();
-				// This check will only return false if you have the focus in the dev tools console,
-				// or a background tab, or the browser is not focused at all. We still want onfocusin to work
-				var bWasFocused = $DomRef.is(":focus");
-				// do not fire the artificial events in this case since we would recieve onfocusin twice
+				$DomRef.trigger("focus");
+				var bWasFocused = this._isFocused(oDomRef);
+				// if focus was successful, skip the artificial events and thus avoid recieving onfocusin twice.
+				// else, fire the artificial events because we still want onfocusin to work.
 				bFireArtificialEvents = !bWasFocused;
 			}
 
@@ -182,6 +190,10 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 				this._createAndDispatchFocusEvent("focus", oDomRef);
 				this._createAndDispatchFocusEvent("activate", oDomRef);
 			}
+
+			if (!this._isFocused(oDomRef)) {
+				this.oLogger.trace("Control " + oControl + " could not be focused-in correctly. This may lead to lost interactions with the control");
+			}
 		},
 
 		_simulateFocusout: function (oDomRef) {
@@ -191,9 +203,10 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 		},
 
 		/**
-		 * Create the correct event object for a mouse event
-		 * @param {string} sName the mouse event name
-		 * @param {DOMElement} oDomRef the domref on that the event is going to be triggered
+		 * Create the correct event object for a mouse event.
+		 *
+		 * @param {string} sName Name of the mouse event
+		 * @param {Element} oDomRef DOM element on which the event is going to be triggered
 		 * @private
 		 */
 		_createAndDispatchMouseEvent: function (sName, oDomRef) {
@@ -202,43 +215,130 @@ function (ManagedObject, QUnitUtils, Opa5, Device, jQueryDOM, _OpaLogger) {
 			// See file jquery.sap.events.js for some insights to the magic
 			var iLeftMouseButtonIndex = 0;
 			var oMouseEvent;
-			if (Device.browser.phantomJS || (Device.browser.msie && (Device.browser.version < 12))) {
-				oMouseEvent = document.createEvent("MouseEvent");
-				oMouseEvent.initMouseEvent(sName, true, true, window, 0, 0, 0, 0, 0,
-					false, false, false, false, iLeftMouseButtonIndex, oDomRef);
-			} else {
-				oMouseEvent = new MouseEvent(sName, {
-					bubbles: true,
-					cancelable: true,
-					identifier: 1,
-					target: oDomRef,
-					radiusX: 1,
-					radiusY: 1,
-					rotationAngle: 0,
-					button: iLeftMouseButtonIndex,
-					type: sName // include the type so jQuery.event.fixHooks can copy properties properly
-				});
-			}
+			oMouseEvent = new MouseEvent(sName, {
+				bubbles: true,
+				cancelable: true,
+				identifier: 1,
+				target: oDomRef,
+				radiusX: 1,
+				radiusY: 1,
+				rotationAngle: 0,
+				button: iLeftMouseButtonIndex,
+				type: sName // include the type so jQuery.event.fixHooks can copy properties properly
+			});
 			oDomRef.dispatchEvent(oMouseEvent);
 		},
 
 		_createAndDispatchFocusEvent: function (sName, oDomRef) {
-			var oFocusEvent;
+			var oFocusEvent,
+				bBubbles = ["focusin", "focusout", "activate", "deactivate"].indexOf(sName) !== -1;
 
-			// PhantomJS does not have a FocusEvent constructer and no InitFocusEvent function
-			if (Device.browser.phantomJS) {
-				oFocusEvent = document.createEvent("FocusEvent");
-				oFocusEvent.initEvent(sName, true, false);
-				// IE 11 and below don't really like the FocusEvent constructor - Fire it the IE way
-			} else if (Device.browser.msie && (Device.browser.version < 12)) {
-				oFocusEvent = document.createEvent("FocusEvent");
-				oFocusEvent.initFocusEvent(sName, true, false, window, 0, oDomRef);
-			} else {
-				oFocusEvent = new FocusEvent(sName);
-			}
+			oFocusEvent = new FocusEvent(sName, {
+				type: sName,
+				target: oDomRef,
+				curentTarget: oDomRef,
+				bubbles: bBubbles
+			});
 
 			oDomRef.dispatchEvent(oFocusEvent);
 			this.oLogger.info("Dispatched focus event: '" + sName + "'");
+		},
+
+		_createAndDispatchDragEvent: function (sName, oDomRef, oOptions) {
+			var mCoordinates = this._getEventCoordinates(oDomRef, oOptions);
+			var oDataTransfer = new DataTransfer();
+			var oDragEvent;
+
+			oDragEvent = new DragEvent(sName, {
+				type: sName, // include the type so jQuery.event.fixHooks can copy properties properly
+				eventPhase: 3,
+				bubbles: true,
+				cancelable: true,
+				defaultPrevented: false,
+				composed: true,
+				returnValue: true,
+				cancelBubble: false,
+				target: oDomRef,
+				toElement: oDomRef,
+				srcElement: oDomRef,
+				radiusX: 1,
+				radiusY: 1,
+				rotationAngle: 0,
+				// coordinates are needed to infer drop elem. e.g. in the control handlers, the drop target can be recalculated using document.elementfromPoint.
+				// even if set, pageXY and screenXY are zeroed. if clientXY is set, then xy and pageXY will be = clientXY, and offsetXY will be calculated correctly.
+				// this may cause problems for controls outside the client area
+				// in this case, users should scroll before the drag event
+				clientX: mCoordinates.x,
+				clientY: mCoordinates.y,
+				// dataTransfer should be at least an empty object, to avoid undefined error
+				dataTransfer: oDataTransfer
+			});
+
+			oDomRef.dispatchEvent(oDragEvent);
+		},
+
+		_createAndDispatchScrollEvent: function (oDomRef, oOptions) {
+			if (oOptions.x) {
+				oDomRef.scrollLeft = oOptions.x;
+			}
+			if (oOptions.y) {
+				oDomRef.scrollTop = oOptions.y;
+			}
+			var oScrollEvent = new Event("scroll", {
+				bubbles: false,
+				cancelBubble: false,
+				cancelable: false,
+				composed: false,
+				currentTarget: null,
+				defaultPrevented: false,
+				eventPhase: 0,
+				isTrusted: true,
+				returnValue: true,
+				target: oDomRef,
+				srcElement: oDomRef,
+				type: "scroll"
+			});
+			oDomRef.dispatchEvent(oScrollEvent);
+		},
+
+		_getEventCoordinates: function (oDomRef, oOptions) {
+			var $domRef = jQueryDOM(oDomRef);
+			var offset = $domRef.offset();
+			var mCenterCoordinates = {
+				x: offset.left + $domRef.outerWidth() / 2,
+				y: offset.top + $domRef.outerHeight() / 2
+			};
+			if (!oOptions) {
+				return mCenterCoordinates;
+			}
+
+			switch (oOptions.position) {
+				case this.dropPosition.BEFORE:
+					// coords of upper left corner
+					return {
+						x: offset.left,
+						y: offset.top
+					};
+				case this.dropPosition.AFTER:
+					// coords of bottom right corner
+					return {
+						x: offset.left + $domRef.outerWidth(),
+						y: offset.top + $domRef.outerHeight()
+					};
+				case this.dropPosition.CENTER:
+				default:
+					return mCenterCoordinates;
+			}
+		},
+
+		_isFocused: function (oDomRef) {
+			// This check returns false if:
+			// 1. you have the focus in the dev tools console, or a background tab, or the browser is not focused at all. (bDocumentHasFocus will be false)
+			// 2. in IE11 and Firefox, because the document.activeElement wasn't updated. (bIsActiveElement will be false)
+			var bIsActiveElement = oDomRef === document.activeElement;
+			var bDocumentHasFocus = !document.hasFocus || document.hasFocus();
+			var bIsElemInBody = !!(oDomRef.type || oDomRef.href || ~oDomRef.tabIndex);
+			return bIsActiveElement && bDocumentHasFocus && bIsElemInBody;
 		}
 	});
 

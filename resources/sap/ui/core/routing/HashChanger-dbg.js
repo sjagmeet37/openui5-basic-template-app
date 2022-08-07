@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -9,14 +9,16 @@ sap.ui.define([
 	"./RouterHashChanger",
 	'sap/ui/thirdparty/hasher',
 	"sap/base/Log",
-	"sap/base/util/ObjectPath"
-], function(HashChangerBase, RouterHashChanger, hasher, Log, ObjectPath) {
+	"sap/base/util/ObjectPath",
+	"sap/ui/performance/trace/Interaction"
+], function(HashChangerBase, RouterHashChanger, hasher, Log, ObjectPath, Interaction) {
 	"use strict";
 
 	/**
-	 * @class Class for manipulating and receiving changes of the browserhash with the hasher framework.
-	 * Fires a "hashChanged" event if the browser hash changes.
-	 * @extends sap.ui.base.EventProvider
+	 * @class Class for manipulating and receiving changes of the browser hash with the hasher framework.
+	 *
+	 * Fires a <code>hashChanged</code> event if the browser hash changes.
+	 * @extends sap.ui.core.routing.HashChangerBase
 	 *
 	 * @public
 	 * @alias sap.ui.core.routing.HashChanger
@@ -83,8 +85,11 @@ sap.ui.define([
 	 */
 	HashChanger.prototype.createRouterHashChanger = function() {
 		if (!this._oRouterHashChanger) {
+			var oParsedHash = this._parseHash(this.getHash());
 			this._oRouterHashChanger = new RouterHashChanger({
-				parent: this
+				parent: this,
+				hash: oParsedHash.hash,
+				subHashMap: oParsedHash.subHashMap
 			});
 
 			this._registerListenerToRelevantEvents();
@@ -92,7 +97,9 @@ sap.ui.define([
 			this._oRouterHashChanger.attachEvent("hashSet", this._onHashModified, this);
 			this._oRouterHashChanger.attachEvent("hashReplaced", this._onHashModified, this);
 		}
-
+		this._oRouterHashChanger.attachEvent("hashChanged", function() {
+			Interaction.notifyNavigation();
+		});
 		return this._oRouterHashChanger;
 	};
 
@@ -137,66 +144,102 @@ sap.ui.define([
 
 	HashChanger.prototype._onHashModified = function(oEvent) {
 		var sEventName = oEvent.getId(),
-			sHash = oEvent.getParameter("hash"),
-			sKey = oEvent.getParameter("key"),
-			aDeletePrefix = oEvent.getParameter("deletePrefix");
+			aHashes = [oEvent.getParameter("hash")],
+			aKeys = [oEvent.getParameter("key")],
+			aNestedHashInfo = oEvent.getParameter("nestedHashInfo"),
+			aDeletePrefix = oEvent.getParameter("deletePrefix") || [];
+
+		if (Array.isArray(aNestedHashInfo)) {
+			aNestedHashInfo.forEach(function(oHashInfo) {
+				aHashes.push(oHashInfo.hash);
+				aKeys.push(oHashInfo.key);
+
+				if (Array.isArray(oHashInfo.deletePrefix)) {
+					oHashInfo.deletePrefix.forEach(function(sDeletePrefix) {
+						if (aDeletePrefix.indexOf(sDeletePrefix) === -1) {
+							aDeletePrefix.push(sDeletePrefix);
+						}
+					});
+				}
+			});
+		}
 
 		if (sEventName === "hashSet") {
-			this._setSubHash(sKey, sHash, aDeletePrefix);
+			this._setSubHash(aKeys, aHashes, aDeletePrefix);
 		} else {
-			this._replaceSubHash(sKey, sHash, aDeletePrefix);
+			this._replaceSubHash(aKeys, aHashes, aDeletePrefix);
 		}
 	};
 
-	HashChanger.prototype._setSubHash = function(sKey, sSubHash, aChildPrefix) {
+	HashChanger.prototype._setSubHash = function(aKeys, aSubHashes, aChildPrefix) {
 		// construct the full hash by replacing the part starts with the sKey
-		var sHash = this._reconstructHash(sKey, sSubHash, aChildPrefix);
+		var sHash = this._reconstructHash(aKeys, aSubHashes, aChildPrefix);
 		this.setHash(sHash);
 	};
 
-	HashChanger.prototype._replaceSubHash = function(sKey, sSubHash, aChildPrefix) {
+	HashChanger.prototype._replaceSubHash = function(aKeys, aSubHashes, aChildPrefix) {
 		// construct the full hash by replacing the part starts with the sKey
-		var sHash = this._reconstructHash(sKey, sSubHash, aChildPrefix);
+		var sHash = this._reconstructHash(aKeys, aSubHashes, aChildPrefix);
 		this.replaceHash(sHash);
 	};
 
 	/**
+	 * Reconstructs the hash
 	 *
+	 * @param {string[]} aKeys The prefixes of the RouterHashChangers which changed their hash during the last navTo call
+	 * @param {string[]} aValues The new hashes in the last navTo call
+	 * @param {string[]} aDeleteKeys The prefixes of the RouterHashChanger which are navigated away and their hashes will be deleted from the browser hash
+	 * @returns {string} The reconstructed hash
+	 * @private
 	 */
-	HashChanger.prototype._reconstructHash = function(sKey, sValue, aDeleteKeys) {
+	HashChanger.prototype._reconstructHash = function(aKeys, aValues, aDeleteKeys) {
 		var aParts = this.getHash().split("&/"),
 			sTopHash = aParts.shift();
 
-		if (sKey === undefined) {
-			// change the top level hash
-			// convert all values to string for compatibility reason (for
-			// example, undefined is converted to "undefined")
-			sTopHash = sValue + "";
-		} else {
-			var bFound = aParts.some(function(sPart, i, aParts) {
-				if (sPart.startsWith(sKey)) {
-					if (sValue) {
-						// replace the subhash
-						aParts[i] =  sKey + "/" + sValue;
-					} else {
-						// remove the subhash
-						aDeleteKeys.push(sKey);
-					}
-					return true;
-				}
-			});
-			if (!bFound) {
-				// the subhash must be added
-				aParts.push(sKey + "/" + sValue);
+		aKeys.forEach(function(sKey, index) {
+			// remove sKey from aDeleteKeys because sKey should have a part in the final browser hash
+			// when sValue is falsy, the sKey will be inserted into aDeleteKeys later
+			if (aDeleteKeys) {
+				aDeleteKeys = aDeleteKeys.filter(function(sDeleteKey) {
+					return sDeleteKey !== sKey;
+				});
 			}
-		}
 
-		// remove dependent subhashes from aDeleteKeys from the hash
-		aParts = aParts.filter(function(sPart) {
-			return !aDeleteKeys.some(function(sPrefix) {
-				return sPart.startsWith(sPrefix);
-			});
+			var sValue = aValues[index];
+			if (sKey === undefined) {
+				// change the top level hash
+				// convert all values to string for compatibility reason (for
+				// example, undefined is converted to "undefined")
+				sTopHash = sValue + "";
+			} else {
+				var bFound = aParts.some(function(sPart, i, aParts) {
+					if (sPart.startsWith(sKey)) {
+						if (sValue) {
+							// replace the subhash
+							aParts[i] =  sKey + "/" + sValue;
+						} else {
+							// remove the subhash
+							aDeleteKeys.push(sKey);
+						}
+						return true;
+					}
+				});
+				if (!bFound) {
+					// the subhash must be added
+					aParts.push(sKey + "/" + sValue);
+				}
+			}
+
 		});
+
+		if (aDeleteKeys && aDeleteKeys.length > 0) {
+			// remove dependent subhashes from aDeleteKeys from the hash
+			aParts = aParts.filter(function(sPart) {
+				return !aDeleteKeys.some(function(sPrefix) {
+					return sPart.startsWith(sPrefix);
+				});
+			});
+		}
 
 		aParts.unshift(sTopHash);
 
@@ -211,7 +254,12 @@ sap.ui.define([
 			subHashMap: aParts.reduce(function(oMap, sPart) {
 				var iSlashPos = sPart.indexOf("/");
 
-				oMap[sPart.substring(0, iSlashPos)] = sPart.substring(iSlashPos + 1);
+				if (iSlashPos === -1) {
+					oMap[sPart] = "";
+				} else {
+					oMap[sPart.substring(0, iSlashPos)] = sPart.substring(iSlashPos + 1);
+				}
+
 				return oMap;
 			}, {})
 		};
@@ -250,22 +298,46 @@ sap.ui.define([
 	};
 
 	/**
+	 * @typedef {object} sap.ui.core.routing.HashChangerEventInfo
+	 * @description The object containing the event info for the events that are forwarded to {@link sap.ui.core.routing.RouterHashChanger}.
+	 * @property {string} name The name of the event that is fired by the HashChanger and should be forwarded to the RouterHashChanger
+	 * @property {sap.ui.core.routing.HashChangerEventParameterMapping} [paramMapping] The optional defined parameter name mapping that is
+	 *  used for forwarding the event to the {@link sap.ui.core.routing.RouterHashChanger}.
+	 * @property {boolean} updateHashOnly Indicates whether the event is ignored by every RouterHashChanger
+	 *  instance and is only relevant for the other routing classes, for example {@link sap.ui.core.routing.History}.
+	 * @protected
+	 * @since 1.82.0
+	 */
+
+	/**
+	 * @typedef {object} sap.ui.core.routing.HashChangerEventParameterMapping
+	 * @description The object containing the parameter mapping for forwarding the event to the {@link sap.ui.core.routing.RouterHashChanger}.
+	 * @property {string} [newHash] The name of the parameter whose value is used as the <code>newHash</code> parameter
+	 *  in the event that is forwarded to the {@link sap.ui.core.routing.RouterHashChanger}. If this isn't set, the
+	 *  value is taken from the property <code>newHash</code>.
+	 * @property {string} [oldHash] The name of the parameter whose value is used as the <code>oldHash</code> parameter
+	 *  in the event that is forwarded to the {@link sap.ui.core.routing.RouterHashChanger}. If this isn't set, the
+	 *  value is taken from the property <code>oldHash</code>.
+	 * @property {string} [fullHash] The name of the parameter whose value is used as the <code>fullHash</code> parameter
+	 *  in the event that is forwarded to the {@link sap.ui.core.routing.RouterHashChanger}. If this isn't set, the
+	 *  value is taken from the property <code>fullHash</code>.
+	 * @protected
+	 * @since 1.82.0
+	 */
+
+	/**
 	 * Defines the events and its parameters which should be used for tracking the hash changes
 	 *
-	 * @return {Object[]} the events info. Each event info object in the array should
-	 * contain a name property which describes the event name, and an optional paramMapping object where the parameter
-	 * names in the event are defined for the 'newHash', 'oldHash' and 'fullHash'. If any of them isn't defined in the
-	 * mapping, the same name is used to get the property value from the event object. Every object can also define a
-	 * "updateHashOnly" option with boolean value to indicate whether the event is only relevant for the
-	 * RouterHashChanger instances which are going to be created and the event shouldn't be forwarded to the existing
-	 * RouterHashChanger instances. If this option is set to true, the new hash is saved RouterHashChanger instances but
-	 * no "hashChanged" event is fired on any existing RouterHashChanger instance.
+	 * @return {sap.ui.core.routing.HashChangerEventInfo[]} The array containing the events info
 	 * @protected
 	 */
 	HashChanger.prototype.getRelevantEventsInfo = function() {
 		return [
 			{
-				name: "hashChanged"
+				name: "hashChanged",
+				paramMapping: {
+					fullHash: "newHash"
+				}
 			}
 		];
 	};
@@ -339,6 +411,18 @@ sap.ui.define([
 		 */
 		HashChanger.replaceHashChanger = function(oHashChanger) {
 			if (_oHashChanger && oHashChanger) {
+				var fnGetHistoryInstance = ObjectPath.get("sap.ui.core.routing.History.getInstance"),
+					oHistory;
+
+				// replace the hash changer on oHistory should occur before the replacement on router hash changer
+				// because the history direction should be determined before a router processes the hash.
+				if (fnGetHistoryInstance) {
+					oHistory = fnGetHistoryInstance();
+					// set the new hash changer to oHistory. This will also deregister the listeners from the old hash
+					// changer.
+					oHistory._setHashChanger(oHashChanger);
+				}
+
 				if (_oHashChanger._oRouterHashChanger) {
 					_oHashChanger._oRouterHashChanger.detachEvent("hashSet", _oHashChanger._onHashModified, _oHashChanger);
 					_oHashChanger._oRouterHashChanger.detachEvent("hashReplaced", _oHashChanger._onHashModified, _oHashChanger);
@@ -353,22 +437,8 @@ sap.ui.define([
 					oHashChanger._registerListenerToRelevantEvents();
 				}
 
-				var fnGetHistoryInstance = ObjectPath.get("sap.ui.core.routing.History.getInstance"),
-					oHistory;
-
-				if (fnGetHistoryInstance) {
-					oHistory = fnGetHistoryInstance();
-					// unregister the hashChanger so the events don't get fired twice
-					oHistory._unRegisterHashChanger();
-				}
-
 				extendHashChangerEvents(oHashChanger);
 				_oHashChanger.destroy();
-
-				if (oHistory) {
-					// check if the history got loaded yet - if not there is no need to replace its hashchanger since it will ask for the global one
-					oHistory._setHashChanger(oHashChanger);
-				}
 			}
 
 			_oHashChanger = oHashChanger;

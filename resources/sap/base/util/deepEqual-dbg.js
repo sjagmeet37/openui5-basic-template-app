@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 /*global Node */
@@ -13,7 +13,8 @@ sap.ui.define(["sap/base/Log"], function(Log) {
 
 	/**
 	 * Compares the two given values for equality, especially by comparing the content.
-	 * Note: function does not work with comparing XML objects
+	 *
+	 * <b>Note:</b> Function does not work with comparing XML objects.
 	 *
 	 * @function
 	 * @since 1.58
@@ -41,13 +42,8 @@ sap.ui.define(["sap/base/Log"], function(Log) {
 			Log.warning("deepEqual comparison exceeded maximum recursion depth of " + maxDepth + ". Treating values as unequal");
 			return false;
 		}
-		if (a === b) {
-			return true;
-		}
 
-		// Number.isNaN is not supported by IE11, so we need to fall back on the verbose implementation
-		var bIsReallyNaN = (typeof a === "number" && typeof b === "number" && isNaN(a) && isNaN(b));
-		if (bIsReallyNaN) {
+		if (a === b || Number.isNaN(a) && Number.isNaN(b)) {
 			return true;
 		}
 

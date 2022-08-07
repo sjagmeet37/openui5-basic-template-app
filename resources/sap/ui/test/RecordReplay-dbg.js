@@ -1,6 +1,6 @@
 /*!
  * OpenUI5
- * (c) Copyright 2009-2019 SAP SE or an SAP affiliate company.
+ * (c) Copyright 2009-2021 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -16,7 +16,7 @@ sap.ui.define([
 	"use strict";
 
 	/**
-	 * @class record-and-replay implementation for OPA5
+	 * @class Record-and-replay implementation for OPA5.
 	 *
 	 * @public
 	 * @alias sap.ui.test.RecordReplay
@@ -62,20 +62,22 @@ sap.ui.define([
 	 * The 'best' selector is the one with which it is most likely to uniquely identify a control with the least possible inspection of the control tree.
 	 * @param {object} oOptions Options to influence the generation of the selector
 	 * @param {Element} oOptions.domElement DOM element that was pointed out by the user
-	 * @returns {Promise<ControlSelector|Error>} Promise for control selector or error
+	 * @param {object} oOptions.settings preferences for the selector e.g. which is the most prefered strategy
+	 * @param {boolean} oOptions.settings.preferViewId true if selectors with view ID should have higher priority than selectors with global ID. Default value is false.
+	 * If one selector is requested, and there are two valid selectors - with view ID and global ID, the one with view ID should be returned.
+	 * @returns {Promise<sap.ui.test.RecordReplay.ControlSelector|Error>} Promise for control selector or error
 	 * @public
 	 */
 	RecordReplay.findControlSelectorByDOMElement = function(oOptions) {
 		return new Promise(function (resolve, reject) {
-			try {
-				var oControl = _ControlFinder._getControlForElement(oOptions.domElement);
-				if (!oControl) {
+			var oControl = _ControlFinder._getControlForElement(oOptions.domElement);
+			if (!oControl) {
 					reject(new Error("Could not find control for DOM element " + oOptions.domElement.id));
-				}
-				var oSelector = _ControlSelectorGenerator._generate({
-					control: oControl,
-					domElement: oOptions.domElement
-				});
+			}
+			var oOptionsForGenerator = Object.assign({
+				control: oControl
+			}, oOptions);
+			_ControlSelectorGenerator._generate(oOptionsForGenerator).then(function (oSelector) {
 				var sIDSuffix = _ControlFinder._getDomElementIDSuffix(oOptions.domElement, oControl);
 				if (sIDSuffix) {
 					oLogger.debug("DOM element ID suffix is " + sIDSuffix);
@@ -84,9 +86,9 @@ sap.ui.define([
 					};
 				}
 				resolve(oSelector);
-			} catch (oError) {
+			}).catch(function (oError) {
 				reject(new Error("No control selector found for DOM element " + oOptions.domElement.id + ". Error: " + oError));
-			}
+			});
 		});
 	};
 
@@ -95,7 +97,7 @@ sap.ui.define([
 	 *
 	 * @param {object} oOptions Options for the search
 	 * @param {sap.ui.test.RecordReplay.ControlSelector} oOptions.selector Control selector for this control
-	 * Could be the result of {@link sap.ui.test.RecordReplay.findControlSelectorByElement}
+	 * Could be the result of {@link sap.ui.test.RecordReplay.findControlSelectorByDOMElement}
 	 * If the selector matches multiple controls, only the first one will be used
 	 * If the selector contains ID suffix for a DOM element, the 'first' relevant DOM element will be located
 	 * Otherwise, the result will be the 'first' DOM element with ID matching the control's or the one that usually receives focus events
@@ -103,15 +105,34 @@ sap.ui.define([
 	 * @public
 	*/
 	RecordReplay.findDOMElementByControlSelector = function (oOptions) {
-		// TODO: have greater control over result in case of multiple controls or DOM elements
+		return RecordReplay.findAllDOMElementsByControlSelector(oOptions)
+			.then(function (aElements) {
+				if (aElements.length) {
+					return aElements[0];
+				} else {
+					throw new Error("No DOM element found using the control selector " + JSON.stringify(oOptions.selector));
+				}
+			});
+	};
+
+	/**
+	 * Find DOM element representations of all controls specified by a selector object.
+	 * Useful when the selector matches multiple controls and you want all the results.
+	 *
+	 * @param {object} oOptions Options for the search
+	 * @param {sap.ui.test.RecordReplay.ControlSelector} oOptions.selector Control selector for this control
+	 * Could be the result of {@link sap.ui.test.RecordReplay.findControlSelectorByDOMElement}
+	 * If the selector matches multiple controls, all of their representations will be included in the result.
+	 * If the selector contains ID suffix for a DOM element, the result will include the first DOM element with a matching ID (one DOM element per control).
+	 * Otherwise, the result will include the first DOM element with ID matching the control's ID, or the DOM element that usually receives focus events (one DOM element per control).
+	 * @returns {Promise<array|Error>} Promise to be resolved with an array of DOM elements or rejected with Error when no suitable DOM elements are found
+	 * @public
+	*/
+	RecordReplay.findAllDOMElementsByControlSelector = function (oOptions) {
 		return new Promise(function (resolve, reject) {
 			try {
-				var oElement = _ControlFinder._findElements(oOptions.selector)[0];
-				if (oElement) {
-					resolve(oElement);
-				} else {
-					reject(new Error("No DOM element found using the control selector " + JSON.stringify(oOptions.selector)));
-				}
+				var aElements = _ControlFinder._findElements(oOptions.selector);
+				resolve(aElements);
 			} catch (oError) {
 				reject(new Error("No DOM element found using the control selector " + JSON.stringify(oOptions.selector) + ". Error: " + oError));
 			}
